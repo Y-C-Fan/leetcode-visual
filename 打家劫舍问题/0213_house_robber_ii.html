@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>打家劫舍 II 递推可视化</title>
+  <style>
+    :root {
+      --bg: #1a1b26;
+      --panel: #24283b;
+      --card: #292e42;
+      --text: #a9b1d6;
+      --muted: #565f89;
+      --accent: #bb9af7;
+      --accent-2: #7aa2f7;
+      --good: #9ece6a;
+      --warn: #e0af68;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: radial-gradient(circle at 50% 0%, #24283b, var(--bg));
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header {
+      padding: 32px 20px 10px;
+      text-align: center;
+    }
+    header h1 { 
+      margin: 0 0 8px; 
+      font-size: 28px; 
+      background: linear-gradient(to right, var(--accent), var(--accent-2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    header p { margin: 0; color: var(--muted); }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 20px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid #24283b;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    button {
+      background: var(--accent);
+      border: none;
+      color: #1a1b26;
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    button:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    button.secondary { background: var(--accent-2); color: #1a1b26; }
+    button.ghost { background: transparent; color: var(--text); border: 1px solid #414868; }
+    button.active-case { background: var(--accent-2); color: white; }
+    .chip {
+      background: #24283b;
+      border: 1px solid #414868;
+      padding: 6px 10px;
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .row { display: flex; gap: 12px; align-items: center; }
+    .dp-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(60px, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .cell {
+      background: var(--card);
+      padding: 10px 8px;
+      border-radius: 10px;
+      border: 1px solid #2d2d3d;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+    .cell .idx { font-size: 13px; color: var(--muted); font-weight: 600; }
+    .cell .val { font-size: 18px; font-weight: 700; }
+    .cell.active { outline: 2px solid var(--accent); background: #2f334d; }
+    .cell.source { outline: 2px dashed var(--good); background: #223733; }
+    .explain {
+      line-height: 1.6;
+      color: var(--text);
+    }
+    .explain h3 { margin-top: 10px; color: var(--accent); }
+    .log {
+      max-height: 240px;
+      overflow: auto;
+      background: #16161e;
+      border-radius: 12px;
+      border: 1px solid #24283b;
+      padding: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12px;
+      color: #a9b1d6;
+    }
+    .log div { padding: 4px 0; border-bottom: 1px solid #1a1b26; }
+    .legend { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 10px; }
+    .legend span { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .dot.active { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+    .dot.source { background: var(--good); box-shadow: 0 0 8px var(--good); }
+    .dot.house { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+    .footer-note { color: var(--muted); font-size: 12px; margin-top: 8px; }
+
+    .formula-display {
+      background: #1a1b26;
+      border: 1px solid #414868;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 16px 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: var(--text);
+    }
+    .formula-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--accent);
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #2d2d3d;
+      letter-spacing: 0.5px;
+    }
+    .formula-content {
+      font-size: 17px;
+      line-height: 1.6;
+    }
+    .formula-content b { color: var(--accent); }
+    .formula-content .highlight { color: var(--good); font-weight: bold; }
+    .formula-content .math { color: var(--warn); }
+
+    .house-array {
+      display: flex;
+      gap: 10px;
+      margin: 12px 0;
+      flex-wrap: wrap;
+    }
+    .house {
+      width: 50px;
+      height: 60px;
+      background: var(--card);
+      border: 2px solid #414868;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .house .roof {
+      width: 0;
+      height: 0;
+      border-left: 15px solid transparent;
+      border-right: 15px solid transparent;
+      border-bottom: 12px solid var(--warn);
+      position: absolute;
+      top: -12px;
+    }
+    .house .money {
+      font-size: 16px;
+      font-weight: bold;
+      color: var(--good);
+    }
+    .house .index {
+      font-size: 10px;
+      color: var(--muted);
+      position: absolute;
+      bottom: 4px;
+    }
+    .house.selected { border-color: var(--accent); background: #2f334d; }
+    .house.excluded { border-color: var(--muted); opacity: 0.5; }
+
+    .case-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .case-tab {
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      border: 1px solid #414868;
+      background: var(--card);
+      color: var(--text);
+    }
+    .case-tab.active {
+      background: var(--accent-2);
+      color: white;
+      border-color: var(--accent-2);
+    }
+
+    @media (max-width: 900px) {
+      .container { grid-template-columns: 1fr; }
+      .dp-grid { grid-template-columns: repeat(3, minmax(60px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>打家劫舍 II：环形房屋递推可视化</h1>
+    <p>示例：nums = [2, 3, 2, 1, 4]</p>
+  </header>
+
+  <div class="container">
+    <section class="panel">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div class="controls">
+          <button id="btnPrev">上一步</button>
+          <button id="btnNext">下一步</button>
+          <button id="btnPlay" class="secondary">自动播放</button>
+          <button id="btnReset" class="ghost">重置</button>
+        </div>
+      </div>
+      
+      <div class="case-tabs">
+        <div class="case-tab active" id="case1">情况1：不打劫首尾</div>
+        <div class="case-tab" id="case2">情况2：不打劫尾首</div>
+        <div class="case-tab" id="final">最终结果</div>
+      </div>
+      
+      <div class="controls" style="margin-bottom: 12px;">
+        <span class="chip" id="stepInfo">Step 0</span>
+        <span class="chip" id="iInfo">i: -</span>
+        <span class="chip" id="maxInfo">max: -</span>
+      </div>
+
+      <div class="legend" style="margin-top:10px;">
+        <span><i class="dot active"></i>当前计算 dp[i]</span>
+        <span><i class="dot source"></i>来源 dp[i-2] 和 dp[i-1]</span>
+        <span><i class="dot house"></i>房屋金额</span>
+      </div>
+
+      <div id="formulaBox" class="formula-display">
+        dp[i] = max(dp[i-2] + nums[i], dp[i-1])
+      </div>
+
+      <div class="house-array" id="houseArray"></div>
+      <div class="dp-grid" id="dpGrid"></div>
+
+      <h3>操作日志</h3>
+      <div class="log" id="log"></div>
+      <div class="footer-note">公式：dp[i] = max(dp[i-2] + nums[i], dp[i-1])</div>
+    </section>
+
+    <section class="panel explain">
+      <h3>环形房屋的特殊性</h3>
+      <p>
+        与普通打家劫舍不同，环形房屋中<strong>首尾相连</strong>，不能同时打劫第一间和最后一间房屋。
+        因此需要分两种情况讨论：
+      </p>
+      
+      <h3>两种情况分析</h3>
+      <p>
+        <strong>情况1：不考虑最后一间房屋</strong><br/>
+        在 nums[0:n-1] 范围内求最大金额，即打劫第一间但不打劫最后一间。
+      </p>
+      <p>
+        <strong>情况2：不考虑第一间房屋</strong><br/>
+        在 nums[1:n] 范围内求最大金额，即不打劫第一间但可以打劫最后一间。
+      </p>
+      
+      <h3>递推公式</h3>
+      <p>
+        对于线性情况（情况1或情况2），使用与 House Robber I 相同的递推公式：
+      </p>
+      <p style="font-family: monospace; background: #1a1b26; padding: 12px; border-radius: 8px; border: 1px solid #414868;">
+        dp[i] = max(dp[i-2] + nums[i], dp[i-1])
+      </p>
+      <p>
+        其中：
+        - <strong>dp[i-2] + nums[i]</strong>：打劫当前房屋，不能打劫前一间，只能打劫前两间
+        - <strong>dp[i-1]</strong>：不打劫当前房屋，继承前一间房屋的最大金额
+      </p>
+
+      <h3>最终结果</h3>
+      <p>
+        取两种情况的最大值：<strong>max(情况1结果, 情况2结果)</strong>
+      </p>
+
+      <h3>Java 代码实现</h3>
+      <pre class="code-block" style="background: #16161e; border: 1px solid #414868; border-radius: 12px; padding: 16px; margin: 16px 0; font-family: ui-monospace, monospace; font-size: 13px; color: #a9b1d6; overflow-x: auto;">
+<span style="color: var(--muted);">// 主函数：分两种情况处理</span>
+<span style="color: var(--accent);">public int</span> <span style="color: var(--good);">rob</span>(<span style="color: var(--accent-2);">int[]</span> nums) {
+    <span style="color: var(--accent);">if</span> (nums == <span style="color: var(--accent);">null</span> || nums.length == <span style="color: var(--warn);">0</span>) <span style="color: var(--accent);">return</span> <span style="color: var(--warn);">0</span>;
+    <span style="color: var(--accent);">if</span> (nums.length == <span style="color: var(--warn);">1</span>) <span style="color: var(--accent);">return</span> nums[<span style="color: var(--warn);">0</span>];
+    
+    <span style="color: var(--muted);">// 情况1：不考虑最后一间</span>
+    <span style="color: var(--accent-2);">int</span> result1 = <span style="color: var(--good);">robLinear</span>(nums, <span style="color: var(--warn);">0</span>, nums.length - <span style="color: var(--warn);">2</span>);
+    <span style="color: var(--muted);">// 情况2：不考虑第一间</span>
+    <span style="color: var(--accent-2);">int</span> result2 = <span style="color: var(--good);">robLinear</span>(nums, <span style="color: var(--warn);">1</span>, nums.length - <span style="color: var(--warn);">1</span>);
+    
+    <span style="color: var(--accent);">return</span> Math.<span style="color: var(--good);">max</span>(result1, result2);
+}
+
+<span style="color: var(--muted);">// 线性打家劫舍（House Robber I）</span>
+<span style="color: var(--accent);">private int</span> <span style="color: var(--good);">robLinear</span>(<span style="color: var(--accent-2);">int[]</span> nums, <span style="color: var(--accent-2);">int</span> start, <span style="color: var(--accent-2);">int</span> end) {
+    <span style="color: var(--accent-2);">int</span> prev2 = <span style="color: var(--warn);">0</span>;  <span style="color: var(--muted);">// dp[i-2]</span>
+    <span style="color: var(--accent-2);">int</span> prev1 = <span style="color: var(--warn);">0</span>;  <span style="color: var(--muted);">// dp[i-1]</span>
+    
+    <span style="color: var(--accent);">for</span> (<span style="color: var(--accent-2);">int</span> i = start; i <= end; i++) {
+        <span style="color: var(--accent-2);">int</span> curr = Math.<span style="color: var(--good);">max</span>(prev2 + nums[i], prev1);  <span style="color: var(--muted);">// 递推公式</span>
+        prev2 = prev1;
+        prev1 = curr;
+    }
+    <span style="color: var(--accent);">return</span> prev1;
+}</pre>
+    </section>
+  </div>
+
+  <script>
+    const nums = [2, 3, 2, 1, 4];
+    let currentCase = 1;
+    let steps = [];
+    let stepIndex = 0;
+    let playing = false;
+    let timer = null;
+
+    function buildSteps(caseNum) {
+      steps.length = 0;
+      let start, end;
+      
+      if (caseNum === 1) {
+        // 不考虑最后一间
+        start = 0;
+        end = nums.length - 2;
+      } else {
+        // 不考虑第一间
+        start = 1;
+        end = nums.length - 1;
+      }
+
+      let prev2 = 0;
+      let prev1 = 0;
+      let s = 0;
+
+      for (let i = start; i <= end; i++) {
+        const curr = Math.max(prev2 + nums[i], prev1);
+        steps.push({
+          s: s++,
+          i: i,
+          prev2: prev2,
+          prev1: prev1,
+          numsI: nums[i],
+          curr: curr,
+          chooseRob: (prev2 + nums[i]) >= prev1,
+          snapshot: [...Array(i - start).fill(0), curr]
+        });
+        prev2 = prev1;
+        prev1 = curr;
+      }
+    }
+
+    function renderHouseArray(activeIndex) {
+      const container = document.getElementById('houseArray');
+      container.innerHTML = '';
+      
+      nums.forEach((money, idx) => {
+        const house = document.createElement('div');
+        house.className = 'house';
+        
+        // 根据当前情况设置房屋状态
+        if (currentCase === 1) {
+          // 情况1：不考虑最后一间
+          if (idx === nums.length - 1) house.classList.add('excluded');
+        } else if (currentCase === 2) {
+          // 情况2：不考虑第一间
+          if (idx === 0) house.classList.add('excluded');
+        }
+        
+        if (idx === activeIndex) house.classList.add('selected');
+        
+        house.innerHTML = `
+          <div class="roof"></div>
+          <div class="money">$${money}</div>
+          <div class="index">[${idx}]</div>
+        `;
+        container.appendChild(house);
+      });
+    }
+
+    function renderGrid(snapshot, activeIndex) {
+      const grid = document.getElementById('dpGrid');
+      grid.innerHTML = '';
+      
+      // 显示完整的 dp 数组
+      const start = currentCase === 1 ? 0 : 1;
+      const end = currentCase === 1 ? nums.length - 2 : nums.length - 1;
+      
+      for (let i = start; i <= end; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        if (i === activeIndex) cell.classList.add('active');
+        
+        const val = snapshot[i - start] || 0;
+        cell.innerHTML = `<div class="idx">i=${i}</div><div class="val">${val}</div>`;
+        grid.appendChild(cell);
+      }
+    }
+
+    function renderLog(entry) {
+      const log = document.getElementById('log');
+      if (!entry) return;
+      const line = document.createElement('div');
+      const action = entry.chooseRob ? '打劫' : '不打劫';
+      line.textContent = `i=${entry.i}: ${action}房屋${entry.i}, dp[${entry.i}] = max(${entry.prev2}+${entry.numsI}, ${entry.prev1}) = ${entry.curr}`;
+      log.appendChild(line);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function renderStep(idx) {
+      const info = document.getElementById('stepInfo');
+      const iInfo = document.getElementById('iInfo');
+      const maxInfo = document.getElementById('maxInfo');
+      const formulaBox = document.getElementById('formulaBox');
+
+      if (idx < 0) idx = 0;
+      if (idx >= steps.length) idx = steps.length - 1;
+
+      const entry = steps[idx];
+      info.textContent = `Step ${idx + 1} / ${steps.length}`;
+      iInfo.textContent = `i: ${entry.i}`;
+      maxInfo.textContent = `max: ${entry.curr}`;
+      
+      // Update real-time formula
+      const action = entry.chooseRob ? '打劫' : '不打劫';
+      formulaBox.innerHTML = `
+        <div class="formula-title">通用公式: dp[i] = max(dp[i-2] + nums[i], dp[i-1])</div>
+        <div class="formula-content">
+          当前计算: <b>dp[${entry.i}]</b> = max(${entry.prev2} + <span class="highlight">${entry.numsI}</span>, ${entry.prev1})<br>
+          结果: <b>dp[${entry.i}]</b> = max(${entry.prev2 + entry.numsI}, ${entry.prev1}) = <b>${entry.curr}</b><br>
+          <span style="color: ${entry.chooseRob ? 'var(--good)' : 'var(--warn)'}">决定: ${action}房屋 ${entry.i}</span>
+        </div>
+      `;
+
+      renderHouseArray(entry.i);
+      renderGrid(entry.snapshot, entry.i);
+    }
+
+    function resetAll() {
+      stepIndex = 0;
+      document.getElementById('log').innerHTML = '';
+      renderHouseArray(-1);
+      document.getElementById('dpGrid').innerHTML = '';
+      document.getElementById('stepInfo').textContent = 'Step 0';
+      document.getElementById('iInfo').textContent = 'i: -';
+      document.getElementById('maxInfo').textContent = 'max: -';
+      document.getElementById('formulaBox').innerHTML = `
+        <div class="formula-title">通用公式: dp[i] = max(dp[i-2] + nums[i], dp[i-1])</div>
+        <div class="formula-content">等待开始...</div>
+      `;
+    }
+
+    function nextStep() {
+      if (stepIndex >= steps.length) return;
+      const entry = steps[stepIndex];
+      renderStep(stepIndex);
+      renderLog(entry);
+      stepIndex++;
+      if (stepIndex >= steps.length) stopPlay();
+    }
+
+    function prevStep() {
+      if (stepIndex <= 0) return;
+      stepIndex = Math.max(0, stepIndex - 1);
+      document.getElementById('log').innerHTML = '';
+      for (let i = 0; i < stepIndex; i++) {
+        renderLog(steps[i]);
+      }
+      renderStep(stepIndex - 1);
+    }
+
+    function play() {
+      if (playing) return;
+      playing = true;
+      document.getElementById('btnPlay').textContent = '暂停';
+      timer = setInterval(() => nextStep(), 800);
+    }
+
+    function stopPlay() {
+      playing = false;
+      document.getElementById('btnPlay').textContent = '自动播放';
+      if (timer) clearInterval(timer);
+      timer = null;
+    }
+
+    document.getElementById('btnNext').addEventListener('click', nextStep);
+    document.getElementById('btnPrev').addEventListener('click', prevStep);
+    document.getElementById('btnPlay').addEventListener('click', () => {
+      if (playing) stopPlay();
+      else play();
+    });
+    document.getElementById('btnReset').addEventListener('click', () => {
+      stopPlay();
+      resetAll();
+    });
+
+    document.getElementById('case1').addEventListener('click', () => {
+      currentCase = 1;
+      document.getElementById('case1').classList.add('active');
+      document.getElementById('case2').classList.remove('active');
+      document.getElementById('final').classList.remove('active');
+      stopPlay();
+      buildSteps(1);
+      resetAll();
+    });
+
+    document.getElementById('case2').addEventListener('click', () => {
+      currentCase = 2;
+      document.getElementById('case2').classList.add('active');
+      document.getElementById('case1').classList.remove('active');
+      document.getElementById('final').classList.remove('active');
+      stopPlay();
+      buildSteps(2);
+      resetAll();
+    });
+
+    document.getElementById('final').addEventListener('click', () => {
+      document.getElementById('final').classList.add('active');
+      document.getElementById('case1').classList.remove('active');
+      document.getElementById('case2').classList.remove('active');
+      stopPlay();
+      
+      // 计算两种情况的结果
+      const result1 = buildSteps(1);
+      const max1 = steps.length > 0 ? steps[steps.length - 1].curr : 0;
+      buildSteps(2);
+      const max2 = steps.length > 0 ? steps[steps.length - 1].curr : 0;
+      const finalResult = Math.max(max1, max2);
+      
+      document.getElementById('formulaBox').innerHTML = `
+        <div class="formula-title">最终结果</div>
+        <div class="formula-content">
+          情况1（不打劫最后一间）: <span class="highlight">${max1}</span><br>
+          情况2（不打劫第一间）: <span class="highlight">${max2}</span><br>
+          最终最大金额: <b style="color: var(--good); font-size: 20px;">${finalResult}</b>
+        </div>
+      `;
+      document.getElementById('log').innerHTML = `<div>情况1结果: ${max1}</div><div>情况2结果: ${max2}</div><div>最终结果: ${finalResult}</div>`;
+    });
+
+    // 键盘事件监听器
+    document.addEventListener('keydown', (e) => {
+      // 如果用户在输入框中，不响应键盘快捷键
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        return;
+      }
+      
+      if (e.key === 'ArrowLeft') {
+        prevStep();
+        e.preventDefault();
+      } else if (e.key === 'ArrowRight') {
+        nextStep();
+        e.preventDefault();
+      } else if (e.key === ' ') {
+        if (playing) stopPlay();
+        else play();
+        e.preventDefault();
+      }
+    });
+
+    buildSteps(1);
+    resetAll();
+  </script>
+</body>
+</html>

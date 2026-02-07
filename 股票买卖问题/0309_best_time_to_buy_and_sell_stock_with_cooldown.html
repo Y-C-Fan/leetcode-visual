@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>买卖股票的最佳时机含冷冻期 递推可视化</title>
+  <style>
+    :root {
+      --bg: #1a1b26;
+      --panel: #24283b;
+      --card: #292e42;
+      --text: #a9b1d6;
+      --muted: #565f89;
+      --accent: #bb9af7;
+      --accent-2: #7aa2f7;
+      --good: #9ece6a;
+      --warn: #e0af68;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: radial-gradient(circle at 50% 0%, #24283b, var(--bg));
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header {
+      padding: 32px 20px 10px;
+      text-align: center;
+    }
+    header h1 { 
+      margin: 0 0 8px; 
+      font-size: 28px; 
+      background: linear-gradient(to right, var(--accent), var(--accent-2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    header p { margin: 0; color: var(--muted); }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 20px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid #24283b;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    button {
+      background: var(--accent);
+      border: none;
+      color: #1a1b26;
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    button:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    button.secondary { background: var(--accent-2); color: #1a1b26; }
+    button.ghost { background: transparent; color: var(--text); border: 1px solid #414868; }
+    .chip {
+      background: #24283b;
+      border: 1px solid #414868;
+      padding: 6px 10px;
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .row { display: flex; gap: 12px; align-items: center; }
+    .explain {
+      line-height: 1.6;
+      color: var(--text);
+    }
+    .explain h3 { margin-top: 10px; color: var(--accent); }
+    .log {
+      max-height: 240px;
+      overflow: auto;
+      background: #16161e;
+      border-radius: 12px;
+      border: 1px solid #24283b;
+      padding: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12px;
+      color: #a9b1d6;
+    }
+    .log div { padding: 4px 0; border-bottom: 1px solid #1a1b26; }
+    .footer-note { color: var(--muted); font-size: 12px; margin-top: 8px; }
+
+    .formula-display {
+      background: #1a1b26;
+      border: 1px solid #414868;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 16px 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: var(--text);
+    }
+    .formula-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--accent);
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #2d2d3d;
+      letter-spacing: 0.5px;
+    }
+    .formula-content {
+      font-size: 17px;
+      line-height: 1.6;
+    }
+    .formula-content b { color: var(--accent); }
+    .formula-content .highlight { color: var(--good); font-weight: bold; }
+    .formula-content .math { color: var(--warn); }
+
+    .chart-container {
+      position: relative;
+      height: 200px;
+      margin: 12px 0;
+      border: 1px solid #2d2d3d;
+      border-radius: 12px;
+      background: var(--card);
+    }
+    .chart-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      bottom: 0;
+    }
+    .chart-point {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--accent-2);
+      border: 2px solid var(--bg);
+      transform: translate(-50%, -50%);
+      transition: all 0.3s ease;
+    }
+    .chart-point.active {
+      width: 16px;
+      height: 16px;
+      background: var(--good);
+      box-shadow: 0 0 10px var(--good);
+    }
+    .chart-label {
+      position: absolute;
+      font-size: 10px;
+      color: var(--muted);
+      transform: translateX(-50%);
+    }
+
+    .result-display {
+      background: #223733;
+      border: 2px solid var(--good);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+      margin: 12px 0;
+    }
+    .result-display .label {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .result-display .value {
+      font-size: 32px;
+      font-weight: bold;
+      color: var(--good);
+    }
+
+    .state-display {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 12px 0;
+    }
+    .state-item {
+      background: var(--card);
+      border: 1px solid #2d2d3d;
+      border-radius: 8px;
+      padding: 10px;
+      text-align: center;
+    }
+    .state-item .label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .state-item .value {
+      font-size: 20px;
+      font-weight: bold;
+      color: var(--text);
+    }
+    .state-item.hold .value { color: var(--warn); }
+    .state-item.notHold .value { color: var(--good); }
+    .state-item.cooldown .value { color: var(--accent-2); }
+
+    @media (max-width: 900px) {
+      .container { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>买卖股票的最佳时机含冷冻期：递推公式与状态转移可视化</h1>
+    <p>示例：prices = [1,2,3,0,2]</p>
+  </header>
+
+  <div class="container">
+    <section class="panel">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div class="controls">
+          <button id="btnPrev">上一步</button>
+          <button id="btnNext">下一步</button>
+          <button id="btnPlay" class="secondary">自动播放</button>
+          <button id="btnReset" class="ghost">重置</button>
+        </div>
+      </div>
+      
+      <div class="controls" style="margin-bottom: 12px;">
+        <span class="chip" id="stepInfo">Step 0</span>
+        <span class="chip" id="dayInfo">day: -</span>
+        <span class="chip" id="priceInfo">price: -</span>
+      </div>
+
+      <div id="formulaBox" class="formula-display">
+        hold = max(hold, notHold - price)<br>
+        notHold = max(notHold, cooldown)<br>
+        cooldown = hold + price
+      </div>
+
+      <h3>价格走势图</h3>
+      <div class="chart-container" id="chartContainer"></div>
+
+      <div class="result-display">
+        <div class="label">当前最大利润</div>
+        <div class="value" id="maxProfit">-</div>
+      </div>
+
+      <h3>状态转移</h3>
+      <div class="state-display">
+        <div class="state-item hold">
+          <div class="label">持有股票</div>
+          <div class="value" id="hold">-</div>
+        </div>
+        <div class="state-item notHold">
+          <div class="label">不持有股票</div>
+          <div class="value" id="notHold">-</div>
+        </div>
+        <div class="state-item cooldown">
+          <div class="label">冷冻期</div>
+          <div class="value" id="cooldown">-</div>
+        </div>
+      </div>
+
+      <h3>操作日志</h3>
+      <div class="log" id="log"></div>
+      <div class="footer-note">卖出后需等待一天才能买入</div>
+    </section>
+
+    <section class="panel explain">
+      <h3>问题定义</h3>
+      <p>
+        给定一个整数数组 prices，其中 prices[i] 表示某支股票第 i 天的价格。
+        设计一个算法计算出最大利润。在满足以下约束条件下，你可以尽可能地完成更多的交易（多次买卖一支股票）：
+        <br/>
+        - 卖出股票后，你无法在第二天买入股票（即冷冻期为 1 天）。
+        <br/>
+        - 你不能同时参与多笔交易（你必须在再次买入前卖出掉之前的股票）。
+      </p>
+      
+      <h3>动态规划思路</h3>
+      <p>
+        我们需要维护三个状态：
+        <br/>
+        - <strong>hold</strong>：持有股票时的最大利润
+        <br/>
+        - <strong>notHold</strong>：不持有股票且不在冷冻期时的最大利润
+        <br/>
+        - <strong>cooldown</strong>：冷冻期时的最大利润
+      </p>
+
+      <h3>递推公式</h3>
+      <p style="font-family: monospace; background: #1a1b26; padding: 12px; border-radius: 8px; border: 1px solid #414868;">
+        hold = max(hold, notHold - price)<br/>
+        notHold = max(notHold, cooldown)<br/>
+        cooldown = hold + price
+      </p>
+
+      <h3>初始化</h3>
+      <p>
+        <strong>hold = -prices[0]</strong>（第一天买入股票）<br/>
+        <strong>notHold = 0</strong>（第一天不持有股票）<br/>
+        <strong>cooldown = 0</strong>（第一天不可能在冷冻期）
+      </p>
+
+      <h3>Java 代码实现</h3>
+      <pre class="code-block" style="background: #16161e; border: 1px solid #414868; border-radius: 12px; padding: 16px; margin: 16px 0; font-family: ui-monospace, monospace; font-size: 13px; color: #a9b1d6; overflow-x: auto;">
+<span style="color: var(--accent);">public int</span> <span style="color: var(--good);">maxProfit</span>(<span style="color: var(--accent-2);">int[]</span> prices) {
+    <span style="color: var(--accent-2);">int</span> hold = -prices[<span style="color: var(--warn);">0</span>];  <span style="color: var(--muted);">// 持有股票</span>
+    <span style="color: var(--accent-2);">int</span> notHold = <span style="color: var(--warn);">0</span>;  <span style="color: var(--muted);">// 不持有股票</span>
+    <span style="color: var(--accent-2);">int</span> cooldown = <span style="color: var(--warn);">0</span>;  <span style="color: var(--muted);">// 冷冻期</span>
+    
+    <span style="color: var(--accent);">for</span> (<span style="color: var(--accent-2);">int</span> i = <span style="color: var(--warn);">1</span>; i < prices.length; i++) {
+        <span style="color: var(--accent-2);">int</span> prevHold = hold;
+        <span style="color: var(--accent-2);">int</span> prevNotHold = notHold;
+        <span style="color: var(--accent-2);">int</span> prevCooldown = cooldown;
+        
+        hold = Math.<span style="color: var(--good);">max</span>(prevHold, prevNotHold - prices[i]);  <span style="color: var(--muted);">// 递推公式</span>
+        notHold = Math.<span style="color: var(--good);">max</span>(prevNotHold, prevCooldown);  <span style="color: var(--muted);">// 递推公式</span>
+        cooldown = prevHold + prices[i];  <span style="color: var(--muted);">// 递推公式</span>
+    }
+    <span style="color: var(--accent);">return</span> Math.<span style="color: var(--good);">max</span>(notHold, cooldown);  <span style="color: var(--muted);">// 最终答案</span>
+}</pre>
+
+      <h3>本例分析</h3>
+      <p>
+        prices = [1,2,3,0,2]<br/>
+        交易1：第1天买入(1)，第3天卖出(3)，利润 = 2<br/>
+        交易2：第4天买入(0)，第5天卖出(2)，利润 = 2<br/>
+        总利润：<strong>4</strong>
+      </p>
+    </section>
+  </div>
+
+  <script>
+    const prices = [1,2,3,0,2];
+
+    const steps = [];
+    let stepIndex = 0;
+    let playing = false;
+    let timer = null;
+
+    function buildSteps() {
+      steps.length = 0;
+      let hold = -prices[0];
+      let notHold = 0;
+      let cooldown = 0;
+      let stepCount = 0;
+
+      steps.push({
+        s: stepCount++,
+        day: 0,
+        price: prices[0],
+        hold: hold,
+        notHold: notHold,
+        cooldown: cooldown,
+        snapshot: { hold, notHold, cooldown }
+      });
+
+      for (let i = 1; i < prices.length; i++) {
+        const price = prices[i];
+        const prevHold = hold;
+        const prevNotHold = notHold;
+        const prevCooldown = cooldown;
+
+        const newHold = Math.max(hold, notHold - price);
+        const newNotHold = Math.max(notHold, cooldown);
+        const newCooldown = hold + price;
+
+        hold = newHold;
+        notHold = newNotHold;
+        cooldown = newCooldown;
+
+        steps.push({
+          s: stepCount++,
+          day: i,
+          price: price,
+          hold: hold,
+          notHold: notHold,
+          cooldown: cooldown,
+          prevHold: prevHold,
+          prevNotHold: prevNotHold,
+          prevCooldown: prevCooldown,
+          snapshot: { hold, notHold, cooldown }
+        });
+      }
+    }
+
+    function renderChart(activeIndex) {
+      const container = document.getElementById('chartContainer');
+      container.innerHTML = '';
+
+      const maxPrice = Math.max(...prices);
+      const minChartPrice = Math.min(...prices);
+      const padding = 30;
+      const width = container.offsetWidth;
+      const height = container.offsetHeight;
+
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('class', 'chart-line');
+      svg.style.width = '100%';
+      svg.style.height = '100%';
+
+      let pathD = '';
+      prices.forEach((price, idx) => {
+        const x = padding + (idx / (prices.length - 1)) * (width - 2 * padding);
+        const y = padding + (1 - (price - minChartPrice) / (maxPrice - minChartPrice)) * (height - 2 * padding);
+        
+        if (idx === 0) {
+          pathD += `M ${x} ${y}`;
+        } else {
+          pathD += ` L ${x} ${y}`;
+        }
+
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', x);
+        circle.setAttribute('cy', y);
+        circle.setAttribute('r', idx === activeIndex ? 8 : 5);
+        circle.setAttribute('class', 'chart-point');
+        
+        if (idx === activeIndex) {
+          circle.classList.add('active');
+        }
+        
+        svg.appendChild(circle);
+
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', x);
+        text.setAttribute('y', y - 15);
+        text.setAttribute('class', 'chart-label');
+        text.setAttribute('text-anchor', 'middle');
+        text.textContent = price;
+        svg.appendChild(text);
+      });
+
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', pathD);
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', 'var(--accent-2)');
+      path.setAttribute('stroke-width', '2');
+      svg.insertBefore(path, svg.firstChild);
+
+      container.appendChild(svg);
+    }
+
+    function renderLog(entry) {
+      const log = document.getElementById('log');
+      if (!entry) return;
+      const line = document.createElement('div');
+      
+      line.textContent = `第${entry.day}天(price=${entry.price}): hold=${entry.hold}, notHold=${entry.notHold}, cooldown=${entry.cooldown}`;
+      line.style.color = 'var(--good)';
+      log.appendChild(line);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function renderStep(idx) {
+      const info = document.getElementById('stepInfo');
+      const dayInfo = document.getElementById('dayInfo');
+      const priceInfo = document.getElementById('priceInfo');
+      const maxProfitEl = document.getElementById('maxProfit');
+      const holdEl = document.getElementById('hold');
+      const notHoldEl = document.getElementById('notHold');
+      const cooldownEl = document.getElementById('cooldown');
+      const formulaBox = document.getElementById('formulaBox');
+
+      if (idx < 0) idx = 0;
+      if (idx >= steps.length) idx = steps.length - 1;
+
+      const entry = steps[idx];
+      info.textContent = `Step ${idx + 1} / ${steps.length}`;
+      dayInfo.textContent = `day: ${entry.day}`;
+      priceInfo.textContent = `price: ${entry.price}`;
+      maxProfitEl.textContent = Math.max(entry.notHold, entry.cooldown);
+      holdEl.textContent = entry.hold;
+      notHoldEl.textContent = entry.notHold;
+      cooldownEl.textContent = entry.cooldown;
+      
+      if (entry.day === 0) {
+        formulaBox.innerHTML = `
+          <div class="formula-title">初始化</div>
+          <div class="formula-content">
+            hold = -prices[0] = -${entry.price}<br>
+            notHold = 0<br>
+            cooldown = 0
+          </div>
+        `;
+      } else {
+        formulaBox.innerHTML = `
+          <div class="formula-title">递推公式</div>
+          <div class="formula-content">
+            hold = max(hold, notHold - price) = max(${entry.prevHold}, ${entry.prevNotHold} - ${entry.price}) = <b style="color: var(--warn);">${entry.hold}</b><br>
+            notHold = max(notHold, cooldown) = max(${entry.prevNotHold}, ${entry.prevCooldown}) = <b style="color: var(--good);">${entry.notHold}</b><br>
+            cooldown = hold + price = ${entry.prevHold} + ${entry.price} = <b style="color: var(--accent-2);">${entry.cooldown}</b>
+          </div>
+        `;
+      }
+
+      renderChart(entry.day);
+    }
+
+    function resetAll() {
+      stepIndex = 0;
+      document.getElementById('log').innerHTML = '';
+      document.getElementById('chartContainer').innerHTML = '';
+      document.getElementById('maxProfit').textContent = '-';
+      document.getElementById('hold').textContent = '-';
+      document.getElementById('notHold').textContent = '-';
+      document.getElementById('cooldown').textContent = '-';
+      document.getElementById('stepInfo').textContent = 'Step 0';
+      document.getElementById('dayInfo').textContent = 'day: -';
+      document.getElementById('priceInfo').textContent = 'price: -';
+      document.getElementById('formulaBox').innerHTML = `
+        <div class="formula-title">递推公式</div>
+        <div class="formula-content">等待开始...</div>
+      `;
+    }
+
+    function nextStep() {
+      if (stepIndex >= steps.length) return;
+      const entry = steps[stepIndex];
+      renderStep(stepIndex);
+      renderLog(entry);
+      stepIndex++;
+      if (stepIndex >= steps.length) stopPlay();
+    }
+
+    function prevStep() {
+      if (stepIndex <= 0) return;
+      stepIndex = Math.max(0, stepIndex - 1);
+      document.getElementById('log').innerHTML = '';
+      for (let i = 0; i < stepIndex; i++) {
+        renderLog(steps[i]);
+      }
+      renderStep(stepIndex - 1);
+    }
+
+    function play() {
+      if (playing) return;
+      playing = true;
+      document.getElementById('btnPlay').textContent = '暂停';
+      timer = setInterval(() => nextStep(), 600);
+    }
+
+    function stopPlay() {
+      playing = false;
+      document.getElementById('btnPlay').textContent = '自动播放';
+      if (timer) clearInterval(timer);
+      timer = null;
+    }
+
+    document.getElementById('btnNext').addEventListener('click', nextStep);
+    document.getElementById('btnPrev').addEventListener('click', prevStep);
+    document.getElementById('btnPlay').addEventListener('click', () => {
+      if (playing) stopPlay();
+      else play();
+    });
+    document.getElementById('btnReset').addEventListener('click', () => {
+      stopPlay();
+      resetAll();
+    });
+
+    // 键盘事件监听器
+    document.addEventListener('keydown', (e) => {
+      // 如果用户在输入框中，不响应键盘快捷键
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        return;
+      }
+      
+      if (e.key === 'ArrowLeft') {
+        prevStep();
+        e.preventDefault();
+      } else if (e.key === 'ArrowRight') {
+        nextStep();
+        e.preventDefault();
+      } else if (e.key === ' ') {
+        if (playing) stopPlay();
+        else play();
+        e.preventDefault();
+      }
+    });
+
+    buildSteps();
+    resetAll();
+  </script>
+</body>
+</html>

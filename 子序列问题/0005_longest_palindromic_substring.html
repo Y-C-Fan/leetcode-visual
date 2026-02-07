@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>最长回文子串 递推可视化</title>
+  <style>
+    :root {
+      --bg: #1a1b26;
+      --panel: #24283b;
+      --card: #292e42;
+      --text: #a9b1d6;
+      --muted: #565f89;
+      --accent: #bb9af7;
+      --accent-2: #7aa2f7;
+      --good: #9ece6a;
+      --warn: #e0af68;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: radial-gradient(circle at 50% 0%, #24283b, var(--bg));
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header {
+      padding: 32px 20px 10px;
+      text-align: center;
+    }
+    header h1 { 
+      margin: 0 0 8px; 
+      font-size: 28px; 
+      background: linear-gradient(to right, var(--accent), var(--accent-2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    header p { margin: 0; color: var(--muted); }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 20px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid #24283b;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    button {
+      background: var(--accent);
+      border: none;
+      color: #1a1b26;
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    button:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    button.secondary { background: var(--accent-2); color: #1a1b26; }
+    button.ghost { background: transparent; color: var(--text); border: 1px solid #414868; }
+    .chip {
+      background: #24283b;
+      border: 1px solid #414868;
+      padding: 6px 10px;
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .row { display: flex; gap: 12px; align-items: center; }
+    .dp-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(50px, 1fr));
+      gap: 6px;
+      margin-top: 12px;
+    }
+    .cell {
+      background: var(--card);
+      padding: 8px 6px;
+      border-radius: 8px;
+      border: 1px solid #2d2d3d;
+      text-align: center;
+      transition: all 0.3s ease;
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .cell .val { font-size: 16px; font-weight: 700; }
+    .cell.active { outline: 2px solid var(--accent); background: #2f334d; }
+    .cell.palindrome { outline: 2px solid var(--good); background: #223733; }
+    .cell.header { background: #1a1b26; font-weight: bold; color: var(--accent-2); }
+    .cell.header .val { font-size: 12px; }
+    .explain {
+      line-height: 1.6;
+      color: var(--text);
+    }
+    .explain h3 { margin-top: 10px; color: var(--accent); }
+    .log {
+      max-height: 240px;
+      overflow: auto;
+      background: #16161e;
+      border-radius: 12px;
+      border: 1px solid #24283b;
+      padding: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12px;
+      color: #a9b1d6;
+    }
+    .log div { padding: 4px 0; border-bottom: 1px solid #1a1b26; }
+    .legend { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 10px; }
+    .legend span { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .dot.active { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+    .dot.palindrome { background: var(--good); box-shadow: 0 0 8px var(--good); }
+    .footer-note { color: var(--muted); font-size: 12px; margin-top: 8px; }
+
+    .formula-display {
+      background: #1a1b26;
+      border: 1px solid #414868;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 16px 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: var(--text);
+    }
+    .formula-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--accent);
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #2d2d3d;
+      letter-spacing: 0.5px;
+    }
+    .formula-content {
+      font-size: 17px;
+      line-height: 1.6;
+    }
+    .formula-content b { color: var(--accent); }
+    .formula-content .highlight { color: var(--good); font-weight: bold; }
+    .formula-content .math { color: var(--warn); }
+
+    .string-display {
+      display: flex;
+      gap: 4px;
+      margin: 12px 0;
+      flex-wrap: wrap;
+    }
+    .char {
+      width: 40px;
+      height: 50px;
+      background: var(--card);
+      border: 2px solid #414868;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: bold;
+      color: var(--text);
+      position: relative;
+      transition: all 0.3s ease;
+    }
+    .char .index {
+      position: absolute;
+      bottom: 2px;
+      font-size: 10px;
+      color: var(--muted);
+    }
+    .char.active { border-color: var(--accent); background: #2f334d; }
+    .char.in-palindrome { border-color: var(--good); background: #223733; }
+
+    .result-display {
+      background: #223733;
+      border: 2px solid var(--good);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+      margin: 12px 0;
+    }
+    .result-display .label {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .result-display .value {
+      font-size: 24px;
+      font-weight: bold;
+      color: var(--good);
+    }
+
+    @media (max-width: 900px) {
+      .container { grid-template-columns: 1fr; }
+      .dp-grid { grid-template-columns: repeat(4, minmax(50px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>最长回文子串：递推公式与状态转移可视化</h1>
+    <p>示例：s = "babad"</p>
+  </header>
+
+  <div class="container">
+    <section class="panel">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div class="controls">
+          <button id="btnPrev">上一步</button>
+          <button id="btnNext">下一步</button>
+          <button id="btnPlay" class="secondary">自动播放</button>
+          <button id="btnReset" class="ghost">重置</button>
+        </div>
+      </div>
+      
+      <div class="controls" style="margin-bottom: 12px;">
+        <span class="chip" id="stepInfo">Step 0</span>
+        <span class="chip" id="lenInfo">len: -</span>
+        <span class="chip" id="leftInfo">left: -</span>
+      </div>
+
+      <div class="legend" style="margin-top:10px;">
+        <span><i class="dot active"></i>当前检查</span>
+        <span><i class="dot palindrome"></i>回文串</span>
+      </div>
+
+      <div id="formulaBox" class="formula-display">
+        dp[left][right] = (s[left] == s[right]) && dp[left+1][right-1]
+      </div>
+
+      <h3>字符串 s</h3>
+      <div class="string-display" id="stringDisplay"></div>
+
+      <div class="result-display">
+        <div class="label">当前最长回文子串</div>
+        <div class="value" id="longestPalindrome">-</div>
+      </div>
+
+      <h3>DP 表格</h3>
+      <div class="dp-grid" id="dpGrid"></div>
+
+      <h3>操作日志</h3>
+      <div class="log" id="log"></div>
+      <div class="footer-note">公式：dp[left][right] = (s[left] == s[right]) && dp[left+1][right-1]</div>
+    </section>
+
+    <section class="panel explain">
+      <h3>问题定义</h3>
+      <p>
+        给定一个字符串 s，找到 s 中最长的回文子串。回文串是指正着读和反着读都一样的字符串。
+      </p>
+      
+      <h3>动态规划思路</h3>
+      <p>
+        设 <strong>dp[left][right]</strong> 表示 s[left...right] 是否为回文串。
+        我们需要找到所有可能的子串，判断它们是否为回文串，并记录最长的。
+      </p>
+
+      <h3>递推公式</h3>
+      <p>
+        对于子串 s[left...right]：
+      </p>
+      <p style="font-family: monospace; background: #1a1b26; padding: 12px; border-radius: 8px; border: 1px solid #414868;">
+        dp[left][right] = (s[left] == s[right]) && dp[left+1][right-1]
+      </p>
+      <p>
+        边界条件：
+        - <strong>dp[i][i] = true</strong>：单个字符是回文串
+        - <strong>dp[i][i+1] = (s[i] == s[i+1])</strong>：两个字符相邻且相同是回文串
+      </p>
+
+      <h3>遍历顺序</h3>
+      <p>
+        外层循环遍历子串长度 len（从 2 到 n），内层循环遍历左边界 left（从 0 到 n-len）。
+        这样可以确保在计算 dp[left][right] 时，dp[left+1][right-1] 已经被计算过。
+      </p>
+
+      <h3>Java 代码实现</h3>
+      <pre class="code-block" style="background: #16161e; border: 1px solid #414868; border-radius: 12px; padding: 16px; margin: 16px 0; font-family: ui-monospace, monospace; font-size: 13px; color: #a9b1d6; overflow-x: auto;">
+<span style="color: var(--accent);">public String</span> <span style="color: var(--good);">longestPalindrome</span>(String s) {
+    <span style="color: var(--accent-2);">int</span> n = s.<span style="color: var(--good);">length</span>();
+    <span style="color: var(--accent-2);">boolean[][]</span> dp = <span style="color: var(--accent);">new boolean</span>[n][n];
+    <span style="color: var(--accent-2);">int</span> start = <span style="color: var(--warn);">0</span>, maxLen = <span style="color: var(--warn);">1</span>;
+    
+    <span style="color: var(--muted);">// 初始化：单个字符是回文串</span>
+    <span style="color: var(--accent);">for</span> (<span style="color: var(--accent-2);">int</span> i = <span style="color: var(--warn);">0</span>; i < n; i++) dp[i][i] = <span style="color: var(--accent);">true</span>;
+    
+    <span style="color: var(--muted);">// 按子串长度遍历</span>
+    <span style="color: var(--accent);">for</span> (<span style="color: var(--accent-2);">int</span> len = <span style="color: var(--warn);">2</span>; len <= n; len++) {
+        <span style="color: var(--accent);">for</span> (<span style="color: var(--accent-2);">int</span> left = <span style="color: var(--warn);">0</span>; left <= n - len; left++) {
+            <span style="color: var(--accent-2);">int</span> right = left + len - <span style="color: var(--warn);">1</span>;
+            
+            <span style="color: var(--muted);">// 递推公式</span>
+            <span style="color: var(--accent);">if</span> (s.<span style="color: var(--good);">charAt</span>(left) == s.<span style="color: var(--good);">charAt</span>(right)) {
+                <span style="color: var(--accent-2);">boolean</span> innerPalin = (len == <span style="color: var(--warn);">2</span>) || dp[left + <span style="color: var(--warn);">1</span>][right - <span style="color: var(--warn);">1</span>];
+                dp[left][right] = innerPalin;
+                
+                <span style="color: var(--muted);">// 更新最长回文子串</span>
+                <span style="color: var(--accent);">if</span> (innerPalin && len > maxLen) {
+                    start = left;
+                    maxLen = len;
+                }
+            }
+        }
+    }
+    <span style="color: var(--accent);">return</span> s.<span style="color: var(--good);">substring</span>(start, start + maxLen);
+}</pre>
+
+      <h3>本例分析</h3>
+      <p>
+        s = "babad"<br/>
+        最长回文子串：<strong>"bab"</strong> 或 <strong>"aba"</strong><br/>
+        长度：<strong>3</strong>
+      </p>
+    </section>
+  </div>
+
+  <script>
+    const s = "babad";
+
+    const n = s.length;
+    const dp = Array(n).fill(null).map(() => Array(n).fill(false));
+
+    const steps = [];
+    let stepIndex = 0;
+    let playing = false;
+    let timer = null;
+
+    function buildSteps() {
+      steps.length = 0;
+      const temp = Array(n).fill(null).map(() => Array(n).fill(false));
+      
+      // 初始化：单个字符是回文串
+      for (let i = 0; i < n; i++) {
+        temp[i][i] = true;
+        steps.push({
+          s: steps.length,
+          type: 'init',
+          i: i,
+          j: i,
+          isPalindrome: true,
+          start: i,
+          maxLen: 1,
+          snapshot: temp.map(row => [...row])
+        });
+      }
+
+      let start = 0;
+      let maxLen = 1;
+
+      // 按子串长度遍历
+      for (let len = 2; len <= n; len++) {
+        for (let left = 0; left <= n - len; left++) {
+          const right = left + len - 1;
+          const charsMatch = s[left] === s[right];
+          let isPalindrome = false;
+
+          if (charsMatch) {
+            if (len === 2) {
+              isPalindrome = true;
+            } else {
+              isPalindrome = temp[left + 1][right - 1];
+            }
+          }
+
+          temp[left][right] = isPalindrome;
+
+          if (isPalindrome && len > maxLen) {
+            start = left;
+            maxLen = len;
+          }
+
+          steps.push({
+            s: steps.length,
+            type: 'compute',
+            len: len,
+            left: left,
+            right: right,
+            charsMatch: charsMatch,
+            isPalindrome: isPalindrome,
+            start: start,
+            maxLen: maxLen,
+            snapshot: temp.map(row => [...row])
+          });
+        }
+      }
+    }
+
+    function renderStringDisplay(palindromeRange) {
+      const container = document.getElementById('stringDisplay');
+      container.innerHTML = '';
+      
+      for (let i = 0; i < s.length; i++) {
+        const char = document.createElement('div');
+        char.className = 'char';
+        char.textContent = s[i];
+        char.innerHTML = `${s[i]}<div class="index">[${i}]</div>`;
+        
+        if (palindromeRange && i >= palindromeRange.start && i <= palindromeRange.end) {
+          char.classList.add('in-palindrome');
+        }
+        
+        container.appendChild(char);
+      }
+    }
+
+    function renderGrid(snapshot, activeIndex) {
+      const grid = document.getElementById('dpGrid');
+      grid.innerHTML = '';
+      
+      // Header row
+      const emptyCell = document.createElement('div');
+      emptyCell.className = 'cell header';
+      emptyCell.innerHTML = '<div class="val">L\R</div>';
+      grid.appendChild(emptyCell);
+      
+      for (let j = 0; j < n; j++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell header';
+        cell.innerHTML = `<div class="val">${j}</div>`;
+        grid.appendChild(cell);
+      }
+      
+      // Data rows
+      for (let i = 0; i < n; i++) {
+        const headerCell = document.createElement('div');
+        headerCell.className = 'cell header';
+        headerCell.innerHTML = `<div class="val">${i}</div>`;
+        grid.appendChild(headerCell);
+        
+        for (let j = 0; j < n; j++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          if (activeIndex && activeIndex.left === i && activeIndex.right === j) {
+            cell.classList.add('active');
+          }
+          if (snapshot[i][j]) {
+            cell.classList.add('palindrome');
+          }
+          
+          cell.innerHTML = `<div class="val">${snapshot[i][j] ? '✓' : '✗'}</div>`;
+          grid.appendChild(cell);
+        }
+      }
+    }
+
+    function renderLog(entry) {
+      const log = document.getElementById('log');
+      if (!entry) return;
+      const line = document.createElement('div');
+      
+      if (entry.type === 'init') {
+        line.textContent = `初始化：dp[${entry.i}][${entry.i}] = true (单个字符是回文串)`;
+      } else {
+        const matchStatus = entry.charsMatch ? '✓ 匹配' : '✗ 不匹配';
+        const palindromeStatus = entry.isPalindrome ? '✓ 回文串' : '✗ 非回文串';
+        line.textContent = `len=${entry.len}, [${entry.left},${entry.right}]: s[${entry.left}](${s[entry.left]}) ${matchStatus} s[${entry.right}](${s[entry.right]}) → ${palindromeStatus}`;
+        line.style.color = entry.isPalindrome ? 'var(--good)' : 'var(--muted)';
+      }
+      log.appendChild(line);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function renderStep(idx) {
+      const info = document.getElementById('stepInfo');
+      const lenInfo = document.getElementById('lenInfo');
+      const leftInfo = document.getElementById('leftInfo');
+      const longestPalindromeEl = document.getElementById('longestPalindrome');
+      const formulaBox = document.getElementById('formulaBox');
+
+      if (idx < 0) idx = 0;
+      if (idx >= steps.length) idx = steps.length - 1;
+
+      const entry = steps[idx];
+      info.textContent = `Step ${idx + 1} / ${steps.length}`;
+      
+      if (entry.type === 'init') {
+        lenInfo.textContent = 'len: 1';
+        leftInfo.textContent = `left: ${entry.i}`;
+        formulaBox.innerHTML = `
+          <div class="formula-title">初始化</div>
+          <div class="formula-content">
+            dp[${entry.i}][${entry.i}] = <span class="highlight">true</span> (单个字符是回文串)
+          </div>
+        `;
+        renderStringDisplay({ start: entry.i, end: entry.i });
+      } else {
+        lenInfo.textContent = `len: ${entry.len}`;
+        leftInfo.textContent = `left: ${entry.left}`;
+        
+        const matchPart = entry.charsMatch ? `✓ ${s[entry.left]} == ${s[entry.right]}` : `✗ ${s[entry.left]} != ${s[entry.right]}`;
+        const innerPart = entry.len === 2 ? 'len=2, 无需检查内部' : `dp[${entry.left+1}][${entry.right-1}] = ${entry.snapshot[entry.left+1][entry.right-1]}`;
+        
+        formulaBox.innerHTML = `
+          <div class="formula-title">递推公式: dp[left][right] = (s[left] == s[right]) && dp[left+1][right-1]</div>
+          <div class="formula-content">
+            当前检查: dp[${entry.left}][${entry.right}] = (s[${entry.left}] == s[${entry.right}]) && dp[${entry.left+1}][${entry.right-1}]<br>
+            判断: ${matchPart} && ${innerPart}<br>
+            结果: dp[${entry.left}][${entry.right}] = <b style="color: ${entry.isPalindrome ? 'var(--good)' : 'var(--warn)'}">${entry.isPalindrome}</b>
+          </div>
+        `;
+        renderStringDisplay(entry.isPalindrome ? { start: entry.start, end: entry.start + entry.maxLen - 1 } : { start: entry.start, end: entry.start + entry.maxLen - 1 });
+      }
+      
+      longestPalindromeEl.textContent = s.substring(entry.start, entry.start + entry.maxLen);
+
+      renderGrid(entry.snapshot, entry.type === 'compute' ? { left: entry.left, right: entry.right } : null);
+    }
+
+    function resetAll() {
+      stepIndex = 0;
+      document.getElementById('log').innerHTML = '';
+      renderStringDisplay(null);
+      document.getElementById('dpGrid').innerHTML = '';
+      document.getElementById('longestPalindrome').textContent = '-';
+      document.getElementById('stepInfo').textContent = 'Step 0';
+      document.getElementById('lenInfo').textContent = 'len: -';
+      document.getElementById('leftInfo').textContent = 'left: -';
+      document.getElementById('formulaBox').innerHTML = `
+        <div class="formula-title">递推公式: dp[left][right] = (s[left] == s[right]) && dp[left+1][right-1]</div>
+        <div class="formula-content">等待开始...</div>
+      `;
+    }
+
+    function nextStep() {
+      if (stepIndex >= steps.length) return;
+      const entry = steps[stepIndex];
+      renderStep(stepIndex);
+      renderLog(entry);
+      stepIndex++;
+      if (stepIndex >= steps.length) stopPlay();
+    }
+
+    function prevStep() {
+      if (stepIndex <= 0) return;
+      stepIndex = Math.max(0, stepIndex - 1);
+      document.getElementById('log').innerHTML = '';
+      for (let i = 0; i < stepIndex; i++) {
+        renderLog(steps[i]);
+      }
+      renderStep(stepIndex - 1);
+    }
+
+    function play() {
+      if (playing) return;
+      playing = true;
+      document.getElementById('btnPlay').textContent = '暂停';
+      timer = setInterval(() => nextStep(), 500);
+    }
+
+    function stopPlay() {
+      playing = false;
+      document.getElementById('btnPlay').textContent = '自动播放';
+      if (timer) clearInterval(timer);
+      timer = null;
+    }
+
+    document.getElementById('btnNext').addEventListener('click', nextStep);
+    document.getElementById('btnPrev').addEventListener('click', prevStep);
+    document.getElementById('btnPlay').addEventListener('click', () => {
+      if (playing) stopPlay();
+      else play();
+    });
+    document.getElementById('btnReset').addEventListener('click', () => {
+      stopPlay();
+      resetAll();
+    });
+
+    // 键盘事件监听器
+    document.addEventListener('keydown', (e) => {
+      // 如果用户在输入框中，不响应键盘快捷键
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        return;
+      }
+      
+      if (e.key === 'ArrowLeft') {
+        prevStep();
+        e.preventDefault();
+      } else if (e.key === 'ArrowRight') {
+        nextStep();
+        e.preventDefault();
+      } else if (e.key === ' ') {
+        if (playing) stopPlay();
+        else play();
+        e.preventDefault();
+      }
+    });
+
+    buildSteps();
+    resetAll();
+  </script>
+</body>
+</html>

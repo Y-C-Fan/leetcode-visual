@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>不同路径 递推可视化</title>
+  <style>
+    :root {
+      --bg: #1a1b26;
+      --panel: #24283b;
+      --card: #292e42;
+      --text: #a9b1d6;
+      --muted: #565f89;
+      --accent: #bb9af7;
+      --accent-2: #7aa2f7;
+      --good: #9ece6a;
+      --warn: #e0af68;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: radial-gradient(circle at 50% 0%, #24283b, var(--bg));
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header {
+      padding: 32px 20px 10px;
+      text-align: center;
+    }
+    header h1 { 
+      margin: 0 0 8px; 
+      font-size: 28px; 
+      background: linear-gradient(to right, var(--accent), var(--accent-2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    header p { margin: 0; color: var(--muted); }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 20px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid #24283b;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    button {
+      background: var(--accent);
+      border: none;
+      color: #1a1b26;
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    button:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    button.secondary { background: var(--accent-2); color: #1a1b26; }
+    button.ghost { background: transparent; color: var(--text); border: 1px solid #414868; }
+    .chip {
+      background: #24283b;
+      border: 1px solid #414868;
+      padding: 6px 10px;
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .row { display: flex; gap: 12px; align-items: center; }
+    .dp-grid {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .cell {
+      background: var(--card);
+      padding: 12px 10px;
+      border-radius: 10px;
+      border: 1px solid #2d2d3d;
+      text-align: center;
+      transition: all 0.3s ease;
+      min-width: 60px;
+      min-height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .cell .val { font-size: 20px; font-weight: 700; }
+    .cell.active { outline: 2px solid var(--accent); background: #2f334d; }
+    .cell.source { outline: 2px dashed var(--good); background: #223733; }
+    .cell.start { border-color: var(--good); background: #223733; }
+    .cell.end { border-color: var(--warn); background: #332d1d; }
+    .explain {
+      line-height: 1.6;
+      color: var(--text);
+    }
+    .explain h3 { margin-top: 10px; color: var(--accent); }
+    .log {
+      max-height: 240px;
+      overflow: auto;
+      background: #16161e;
+      border-radius: 12px;
+      border: 1px solid #24283b;
+      padding: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12px;
+      color: #a9b1d6;
+    }
+    .log div { padding: 4px 0; border-bottom: 1px solid #1a1b26; }
+    .legend { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 10px; }
+    .legend span { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .dot.active { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+    .dot.source { background: var(--good); box-shadow: 0 0 8px var(--good); }
+    .footer-note { color: var(--muted); font-size: 12px; margin-top: 8px; }
+
+    .formula-display {
+      background: #1a1b26;
+      border: 1px solid #414868;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 16px 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: var(--text);
+    }
+    .formula-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--accent);
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #2d2d3d;
+      letter-spacing: 0.5px;
+    }
+    .formula-content {
+      font-size: 17px;
+      line-height: 1.6;
+    }
+    .formula-content b { color: var(--accent); }
+    .formula-content .highlight { color: var(--good); font-weight: bold; }
+    .formula-content .math { color: var(--warn); }
+
+    .result-display {
+      background: #223733;
+      border: 2px solid var(--good);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+      margin: 12px 0;
+    }
+    .result-display .label {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .result-display .value {
+      font-size: 32px;
+      font-weight: bold;
+      color: var(--good);
+    }
+
+    @media (max-width: 900px) {
+      .container { grid-template-columns: 1fr; }
+      .cell { min-width: 45px; min-height: 45px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>不同路径：递推公式与状态转移可视化</h1>
+    <p>示例：m = 3, n = 7</p>
+  </header>
+
+  <div class="container">
+    <section class="panel">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div class="controls">
+          <button id="btnPrev">上一步</button>
+          <button id="btnNext">下一步</button>
+          <button id="btnPlay" class="secondary">自动播放</button>
+          <button id="btnReset" class="ghost">重置</button>
+        </div>
+      </div>
+      
+      <div class="controls" style="margin-bottom: 12px;">
+        <span class="chip" id="stepInfo">Step 0</span>
+        <span class="chip" id="iInfo">i: -</span>
+        <span class="chip" id="jInfo">j: -</span>
+      </div>
+
+      <div class="legend" style="margin-top:10px;">
+        <span><i class="dot active"></i>当前计算 dp[i][j]</span>
+        <span><i class="dot source"></i>来源单元格</span>
+        <span><i class="dot start"></i>起点</span>
+        <span><i class="dot end"></i>终点</span>
+      </div>
+
+      <div id="formulaBox" class="formula-display">
+        dp[i][j] = dp[i-1][j] + dp[i][j-1]
+      </div>
+
+      <h3>DP 表格</h3>
+      <div class="dp-grid" id="dpGrid"></div>
+
+      <div class="result-display">
+        <div class="label">不同路径总数</div>
+        <div class="value" id="totalPaths">-</div>
+      </div>
+
+      <h3>操作日志</h3>
+      <div class="log" id="log"></div>
+      <div class="footer-note">公式：dp[i][j] = dp[i-1][j] + dp[i][j-1]</div>
+    </section>
+
+    <section class="panel explain">
+      <h3>问题定义</h3>
+      <p>
+        一个机器人位于一个 m x n 网格的左上角，机器人每次只能向下或者向右移动一步。
+        机器人试图达到网格的右下角，问总共有多少条不同的路径？
+      </p>
+      
+      <h3>动态规划思路</h3>
+      <p>
+        设 <strong>dp[i][j]</strong> 表示从左上角 (0, 0) 到达位置 (i, j) 的不同路径数。
+      </p>
+
+      <h3>递推公式</h3>
+      <p>
+        对于每个位置 (i, j)，可以从上方 (i-1, j) 或左方 (i, j-1) 到达：
+      </p>
+      <p style="font-family: monospace; background: #1a1b26; padding: 12px; border-radius: 8px; border: 1px solid #414868;">
+        dp[i][j] = dp[i-1][j] + dp[i][j-1]
+      </p>
+      <p>
+        边界条件：
+        - <strong>dp[0][j] = 1</strong>：第一行，只能从左方到达，只有一条路径
+        - <strong>dp[i][0] = 1</strong>：第一列，只能从上方到达，只有一条路径
+      </p>
+
+      <h3>Java 代码实现</h3>
+      <pre class="code-block" style="background: #16161e; border: 1px solid #414868; border-radius: 12px; padding: 16px; margin: 16px 0; font-family: ui-monospace, monospace; font-size: 13px; color: #a9b1d6; overflow-x: auto;">
+<span style="color: var(--accent);">public int</span> <span style="color: var(--good);">uniquePaths</span>(<span style="color: var(--accent-2);">int</span> m, <span style="color: var(--accent-2);">int</span> n) {
+    <span style="color: var(--accent-2);">int[][]</span> dp = <span style="color: var(--accent);">new int</span>[m][n];
+    
+    <span style="color: var(--muted);">// 初始化第一行和第一列</span>
+    <span style="color: var(--accent);">for</span> (<span style="color: var(--accent-2);">int</span> i = <span style="color: var(--warn);">0</span>; i < m; i++) dp[i][<span style="color: var(--warn);">0</span>] = <span style="color: var(--warn);">1</span>;
+    <span style="color: var(--accent);">for</span> (<span style="color: var(--accent-2);">int</span> j = <span style="color: var(--warn);">0</span>; j < n; j++) dp[<span style="color: var(--warn);">0</span>][j] = <span style="color: var(--warn);">1</span>;
+    
+    <span style="color: var(--muted);">// 填充其余位置</span>
+    <span style="color: var(--accent);">for</span> (<span style="color: var(--accent-2);">int</span> i = <span style="color: var(--warn);">1</span>; i < m; i++) {
+        <span style="color: var(--accent);">for</span> (<span style="color: var(--accent-2);">int</span> j = <span style="color: var(--warn);">1</span>; j < n; j++) {
+            dp[i][j] = dp[i - <span style="color: var(--warn);">1</span>][j] + dp[i][j - <span style="color: var(--warn);">1</span>];  <span style="color: var(--muted);">// 递推公式</span>
+        }
+    }
+    <span style="color: var(--accent);">return</span> dp[m - <span style="color: var(--warn);">1</span>][n - <span style="color: var(--warn);">1</span>];
+}</pre>
+
+      <h3>本例分析</h3>
+      <p>
+        m = 3, n = 7<br/>
+        最终结果：<strong>28</strong><br/>
+        这是一个组合问题，从 (0,0) 到 (m-1,n-1) 需要移动 m-1 次向下和 n-1 次向右，总共 m+n-2 步。<br/>
+        不同路径数 = C(m+n-2, m-1) = C(8, 2) = 28
+      </p>
+    </section>
+  </div>
+
+  <script>
+    const m = 3;
+    const n = 7;
+
+    const dp = Array(m).fill(null).map(() => Array(n).fill(0));
+
+    const steps = [];
+    let stepIndex = 0;
+    let playing = false;
+    let timer = null;
+
+    function buildSteps() {
+      steps.length = 0;
+      const temp = Array(m).fill(null).map(() => Array(n).fill(0));
+      let stepCount = 0;
+
+      // 初始化第一行和第一列
+      for (let i = 0; i < m; i++) {
+        temp[i][0] = 1;
+        steps.push({
+          s: stepCount++,
+          type: 'init',
+          i: i,
+          j: 0,
+          result: 1,
+          snapshot: temp.map(row => [...row])
+        });
+      }
+      for (let j = 1; j < n; j++) {
+        temp[0][j] = 1;
+        steps.push({
+          s: stepCount++,
+          type: 'init',
+          i: 0,
+          j: j,
+          result: 1,
+          snapshot: temp.map(row => [...row])
+        });
+      }
+
+      // 填充其余位置
+      for (let i = 1; i < m; i++) {
+        for (let j = 1; j < n; j++) {
+          const fromUp = temp[i - 1][j];
+          const fromLeft = temp[i][j - 1];
+          temp[i][j] = fromUp + fromLeft;
+          
+          steps.push({
+            s: stepCount++,
+            type: 'compute',
+            i: i,
+            j: j,
+            fromUp: fromUp,
+            fromLeft: fromLeft,
+            result: temp[i][j],
+            snapshot: temp.map(row => [...row])
+          });
+        }
+      }
+    }
+
+    function renderGrid(snapshot, activeIndex) {
+      const gridContainer = document.getElementById('dpGrid');
+      gridContainer.innerHTML = '';
+      gridContainer.style.gridTemplateColumns = `repeat(${n}, minmax(60px, 1fr))`;
+      
+      for (let i = 0; i < m; i++) {
+        for (let j = 0; j < n; j++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          
+          if (i === 0 && j === 0) cell.classList.add('start');
+          else if (i === m - 1 && j === n - 1) cell.classList.add('end');
+          
+          if (activeIndex && activeIndex.i === i && activeIndex.j === j) {
+            cell.classList.add('active');
+          }
+          
+          cell.innerHTML = `<div class="val">${snapshot[i][j]}</div>`;
+          gridContainer.appendChild(cell);
+        }
+      }
+    }
+
+    function renderLog(entry) {
+      const log = document.getElementById('log');
+      if (!entry) return;
+      const line = document.createElement('div');
+      
+      if (entry.type === 'init') {
+        line.textContent = `初始化：dp[${entry.i}][${entry.j}] = 1`;
+      } else {
+        line.textContent = `dp[${entry.i}][${entry.j}] = dp[${entry.i-1}][${entry.j}](${entry.fromUp}) + dp[${entry.i}][${entry.j-1}](${entry.fromLeft}) = ${entry.result}`;
+      }
+      log.appendChild(line);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function renderStep(idx) {
+      const info = document.getElementById('stepInfo');
+      const iInfo = document.getElementById('iInfo');
+      const jInfo = document.getElementById('jInfo');
+      const totalPathsEl = document.getElementById('totalPaths');
+      const formulaBox = document.getElementById('formulaBox');
+
+      if (idx < 0) idx = 0;
+      if (idx >= steps.length) idx = steps.length - 1;
+
+      const entry = steps[idx];
+      info.textContent = `Step ${idx + 1} / ${steps.length}`;
+      iInfo.textContent = `i: ${entry.i}`;
+      jInfo.textContent = `j: ${entry.j}`;
+      
+      if (entry.type === 'init') {
+        formulaBox.innerHTML = `
+          <div class="formula-title">初始化</div>
+          <div class="formula-content">
+            dp[${entry.i}][${entry.j}] = <span class="highlight">1</span> (第一行或第一列只有一条路径)
+          </div>
+        `;
+      } else {
+        formulaBox.innerHTML = `
+          <div class="formula-title">递推公式: dp[i][j] = dp[i-1][j] + dp[i][j-1]</div>
+          <div class="formula-content">
+            当前计算: dp[${entry.i}][${entry.j}] = dp[${entry.i-1}][${entry.j}] + dp[${entry.i}][${entry.j-1}]<br>
+            代入数值: dp[${entry.i}][${entry.j}] = ${entry.fromUp} + ${entry.fromLeft} = <b style="color: var(--good);">${entry.result}</b>
+          </div>
+        `;
+      }
+      
+      totalPathsEl.textContent = entry.snapshot[m - 1][n - 1];
+
+      renderGrid(entry.snapshot, entry.type === 'compute' ? { i: entry.i, j: entry.j } : null);
+    }
+
+    function resetAll() {
+      stepIndex = 0;
+      document.getElementById('log').innerHTML = '';
+      document.getElementById('dpGrid').innerHTML = '';
+      document.getElementById('totalPaths').textContent = '-';
+      document.getElementById('stepInfo').textContent = 'Step 0';
+      document.getElementById('iInfo').textContent = 'i: -';
+      document.getElementById('jInfo').textContent = 'j: -';
+      document.getElementById('formulaBox').innerHTML = `
+        <div class="formula-title">递推公式: dp[i][j] = dp[i-1][j] + dp[i][j-1]</div>
+        <div class="formula-content">等待开始...</div>
+      `;
+    }
+
+    function nextStep() {
+      if (stepIndex >= steps.length) return;
+      const entry = steps[stepIndex];
+      renderStep(stepIndex);
+      renderLog(entry);
+      stepIndex++;
+      if (stepIndex >= steps.length) stopPlay();
+    }
+
+    function prevStep() {
+      if (stepIndex <= 0) return;
+      stepIndex = Math.max(0, stepIndex - 1);
+      document.getElementById('log').innerHTML = '';
+      for (let i = 0; i < stepIndex; i++) {
+        renderLog(steps[i]);
+      }
+      renderStep(stepIndex - 1);
+    }
+
+    function play() {
+      if (playing) return;
+      playing = true;
+      document.getElementById('btnPlay').textContent = '暂停';
+      timer = setInterval(() => nextStep(), 500);
+    }
+
+    function stopPlay() {
+      playing = false;
+      document.getElementById('btnPlay').textContent = '自动播放';
+      if (timer) clearInterval(timer);
+      timer = null;
+    }
+
+    document.getElementById('btnNext').addEventListener('click', nextStep);
+    document.getElementById('btnPrev').addEventListener('click', prevStep);
+    document.getElementById('btnPlay').addEventListener('click', () => {
+      if (playing) stopPlay();
+      else play();
+    });
+    document.getElementById('btnReset').addEventListener('click', () => {
+      stopPlay();
+      resetAll();
+    });
+
+    // 键盘事件监听器
+    document.addEventListener('keydown', (e) => {
+      // 如果用户在输入框中，不响应键盘快捷键
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        return;
+      }
+      
+      if (e.key === 'ArrowLeft') {
+        prevStep();
+        e.preventDefault();
+      } else if (e.key === 'ArrowRight') {
+        nextStep();
+        e.preventDefault();
+      } else if (e.key === ' ') {
+        if (playing) stopPlay();
+        else play();
+        e.preventDefault();
+      }
+    });
+
+    buildSteps();
+    resetAll();
+  </script>
+</body>
+</html>

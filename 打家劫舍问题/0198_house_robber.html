@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>打家劫舍 动态规划可视化</title>
+  <style>
+    :root {
+      --bg: #1a1b26;
+      --panel: #24283b;
+      --card: #292e42;
+      --text: #a9b1d6;
+      --muted: #565f89;
+      --accent: #bb9af7;
+      --accent-2: #7aa2f7;
+      --good: #9ece6a;
+      --warn: #e0af68;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: radial-gradient(circle at 50% 0%, #24283b, var(--bg));
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header {
+      padding: 32px 20px 10px;
+      text-align: center;
+    }
+    header h1 { 
+      margin: 0 0 8px; 
+      font-size: 28px; 
+      background: linear-gradient(to right, var(--accent), var(--accent-2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    header p { margin: 0; color: var(--muted); }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 20px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid #24283b;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    button {
+      background: var(--accent);
+      border: none;
+      color: #1a1b26;
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    button:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    button.secondary { background: var(--accent-2); color: #1a1b26; }
+    button.ghost { background: transparent; color: var(--text); border: 1px solid #414868; }
+    .chip {
+      background: #24283b;
+      border: 1px solid #414868;
+      padding: 6px 10px;
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .dp-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(60px, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .cell {
+      background: var(--card);
+      padding: 10px 8px;
+      border-radius: 10px;
+      border: 1px solid #2d2d3d;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+    .cell .idx { font-size: 13px; color: var(--muted); font-weight: 600; }
+    .cell .val { font-size: 18px; font-weight: 700; }
+    .cell .money { font-size: 12px; color: var(--warn); margin-top: 2px; }
+    .cell.active { outline: 2px solid var(--accent); background: #2f334d; }
+    .cell.source1 { outline: 2px dashed var(--good); background: #223733; }
+    .cell.source2 { outline: 2px dashed var(--warn); background: #2d2a1e; }
+    .explain {
+      line-height: 1.6;
+      color: var(--text);
+    }
+    .explain h3 { margin-top: 10px; color: var(--accent); }
+    .log {
+      max-height: 240px;
+      overflow: auto;
+      background: #16161e;
+      border-radius: 12px;
+      border: 1px solid #24283b;
+      padding: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      color: #a9b1d6;
+    }
+    .log div { padding: 4px 0; border-bottom: 1px solid #1a1b26; }
+    .legend { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 10px; }
+    .legend span { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .dot.active { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+    .dot.source1 { background: var(--good); box-shadow: 0 0 8px var(--good); }
+    .dot.source2 { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+    .footer-note { color: var(--muted); font-size: 12px; margin-top: 8px; }
+
+    .formula-display {
+      background: #1a1b26;
+      border: 1px solid #414868;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 16px 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: var(--text);
+    }
+    .formula-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--accent);
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #2d2d3d;
+      letter-spacing: 0.5px;
+    }
+    .formula-content {
+      font-size: 17px;
+      line-height: 1.6;
+    }
+    .formula-content b { color: var(--accent); }
+    .formula-content .highlight { color: var(--good); font-weight: bold; }
+    .formula-content .math { color: var(--warn); }
+
+    .code-block {
+      background: #16161e;
+      border: 1px solid #414868;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 16px 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      color: #a9b1d6;
+      overflow-x: auto;
+    }
+    .code-block .keyword { color: var(--accent); }
+    .code-block .type { color: var(--accent-2); }
+    .code-block .method { color: var(--good); }
+    .code-block .comment { color: var(--muted); font-style: italic; }
+
+    @media (max-width: 900px) {
+      .container { grid-template-columns: 1fr; }
+      .dp-grid { grid-template-columns: repeat(3, minmax(60px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>打家劫舍：动态规划可视化</h1>
+    <p>LeetCode 198 | 示例：nums = [2, 7, 9, 3, 1]</p>
+  </header>
+
+  <div class="container">
+    <section class="panel">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div class="controls">
+          <button id="btnPrev">上一步</button>
+          <button id="btnNext">下一步</button>
+          <button id="btnPlay" class="secondary">自动播放</button>
+          <button id="btnReset" class="ghost">重置</button>
+        </div>
+      </div>
+      
+      <div class="controls" style="margin-bottom: 12px;">
+        <span class="chip" id="stepInfo">Step 0</span>
+        <span class="chip" id="iInfo">i: -</span>
+      </div>
+
+      <div class="legend" style="margin-top:10px;">
+        <span><i class="dot active"></i>当前计算 dp[i]</span>
+        <span><i class="dot source1"></i>偷当前房屋 dp[i-2]+nums[i]</span>
+        <span><i class="dot source2"></i>不偷当前房屋 dp[i-1]</span>
+      </div>
+
+      <div id="formulaBox" class="formula-display">
+        dp[i] = max(dp[i-2] + nums[i], dp[i-1])
+      </div>
+
+      <div class="dp-grid" id="dpGrid"></div>
+
+      <h3>操作日志</h3>
+      <div class="log" id="log"></div>
+      <div class="footer-note">递推公式：dp[i] = max(dp[i-2] + nums[i], dp[i-1])</div>
+    </section>
+
+    <section class="panel explain">
+      <h3>问题理解</h3>
+      <p>
+        你是一个专业的小偷，计划偷窃沿街的房屋。<br/>
+        每间房内都藏有一定的现金，影响你偷窃的唯一制约因素就是相邻的房屋装有相互连通的防盗系统。<br/>
+        如果两间相邻的房屋在同一晚上被小偷闯入，系统会自动报警。<br/>
+        给定一个代表每个房屋存放金额的非负整数数组，计算你在不触动警报装置的情况下，今晚能够偷窃到的最高金额。
+      </p>
+
+      <h3>递推公式推导</h3>
+      <p>
+        设 <strong>dp[i]</strong> 表示偷窃到第 i 个房屋（从 0 开始）时能获得的最大金额。<br/>
+        对于第 i 个房屋，有两种选择：
+      </p>
+      <p>
+        1. <strong>偷第 i 个房屋</strong>：那么不能偷第 i-1 个房屋，最大金额为 dp[i-2] + nums[i]<br/>
+        2. <strong>不偷第 i 个房屋</strong>：那么最大金额为 dp[i-1]<br/>
+        因此：<strong>dp[i] = max(dp[i-2] + nums[i], dp[i-1])</strong>
+      </p>
+
+      <h3>初始化</h3>
+      <p>
+        dp[0] = nums[0]（只有一间房，只能偷它）<br/>
+        dp[1] = max(nums[0], nums[1])（两间房，偷金额大的）
+      </p>
+
+      <h3>Java 代码实现（代码随想录）</h3>
+      <div class="code-block">
+<span class="keyword">public int</span> <span class="method">rob</span>(<span class="type">int</span>[] nums) {
+    <span class="keyword">if</span> (nums == <span class="keyword">null</span> || nums.length == 0) <span class="keyword">return</span> 0;
+    <span class="keyword">if</span> (nums.length == 1) <span class="keyword">return</span> nums[0];
+    
+    <span class="type">int</span>[] dp = <span class="keyword">new int</span>[nums.length];
+    dp[0] = nums[0];           <span class="comment">// 初始化</span>
+    dp[1] = Math.max(nums[0], nums[1]);  <span class="comment">// 初始化</span>
+    
+    <span class="keyword">for</span> (<span class="type">int</span> i = 2; i < nums.length; i++) {
+        dp[i] = Math.max(dp[i - 2] + nums[i], dp[i - 1]);  <span class="comment">// 递推公式</span>
+    }
+    
+    <span class="keyword">return</span> dp[nums.length - 1];
+}
+      </div>
+
+      <h3>本例结果</h3>
+      <p>
+        nums = [2, 7, 9, 3, 1]<br/>
+        最高金额为 <strong>12</strong>：偷第 0、2、4 间房（2 + 9 + 1 = 12）
+      </p>
+    </section>
+  </div>
+
+  <script>
+    const nums = [2, 7, 9, 3, 1];
+
+    const steps = [];
+    let stepIndex = 0;
+    let playing = false;
+    let timer = null;
+
+    function buildSteps() {
+      steps.length = 0;
+      const dp = Array(nums.length).fill(0);
+      
+      // 初始状态
+      steps.push({
+        step: 0,
+        i: 0,
+        steal: nums[0],
+        notSteal: null,
+        result: null,
+        snapshot: [...dp],
+        activeIndex: 0,
+        source1Index: -1,
+        source2Index: -1
+      });
+
+      dp[0] = nums[0];
+      steps.push({
+        step: 1,
+        i: 0,
+        steal: nums[0],
+        notSteal: null,
+        result: dp[0],
+        snapshot: [...dp],
+        activeIndex: 0,
+        source1Index: -1,
+        source2Index: -1
+      });
+
+      // 第二个房屋
+      steps.push({
+        step: 2,
+        i: 1,
+        steal: nums[1],
+        notSteal: dp[0],
+        result: null,
+        snapshot: [...dp],
+        activeIndex: 1,
+        source1Index: -1,
+        source2Index: 0
+      });
+
+      dp[1] = Math.max(nums[0], nums[1]);
+      steps.push({
+        step: 3,
+        i: 1,
+        steal: nums[1],
+        notSteal: dp[0],
+        result: dp[1],
+        snapshot: [...dp],
+        activeIndex: 1,
+        source1Index: -1,
+        source2Index: 0
+      });
+
+      // 后续房屋
+      for (let i = 2; i < nums.length; i++) {
+        const stealVal = dp[i - 2] + nums[i];
+        const notStealVal = dp[i - 1];
+        
+        steps.push({
+          step: steps.length,
+          i: i,
+          steal: stealVal,
+          notSteal: notStealVal,
+          result: null,
+          snapshot: [...dp],
+          activeIndex: i,
+          source1Index: i - 2,
+          source2Index: i - 1
+        });
+
+        dp[i] = Math.max(stealVal, notStealVal);
+        
+        steps.push({
+          step: steps.length,
+          i: i,
+          steal: stealVal,
+          notSteal: notStealVal,
+          result: dp[i],
+          snapshot: [...dp],
+          activeIndex: i,
+          source1Index: i - 2,
+          source2Index: i - 1
+        });
+      }
+    }
+
+    function renderGrid(snapshot, activeIndex, source1Index, source2Index) {
+      const grid = document.getElementById('dpGrid');
+      grid.innerHTML = '';
+      snapshot.forEach((val, idx) => {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        if (idx === activeIndex) cell.classList.add('active');
+        if (idx === source1Index) cell.classList.add('source1');
+        if (idx === source2Index) cell.classList.add('source2');
+        
+        const valText = val === 0 ? '-' : val;
+        cell.innerHTML = `<div class="idx">i=${idx}</div><div class="val">${valText}</div><div class="money">💰${nums[idx]}</div>`;
+        grid.appendChild(cell);
+      });
+    }
+
+    function renderLog(entry) {
+      const log = document.getElementById('log');
+      if (!entry) return;
+      const line = document.createElement('div');
+      
+      if (entry.i === 0) {
+        line.textContent = `初始化: dp[0] = nums[0] = ${entry.result}`;
+      } else if (entry.i === 1 && entry.result !== null) {
+        line.textContent = `初始化: dp[1] = max(nums[0], nums[1]) = max(${nums[0]}, ${nums[1]}) = ${entry.result}`;
+      } else if (entry.result !== null) {
+        line.textContent = `i=${entry.i}: dp[${entry.i}] = max(${entry.steal}, ${entry.notSteal}) = ${entry.result}`;
+      } else {
+        line.textContent = `i=${entry.i}: 考虑: 偷=${entry.steal}, 不偷=${entry.notSteal}`;
+      }
+      
+      log.appendChild(line);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function renderStep(idx) {
+      const info = document.getElementById('stepInfo');
+      const iInfo = document.getElementById('iInfo');
+      const formulaBox = document.getElementById('formulaBox');
+
+      if (idx < 0) idx = 0;
+      if (idx >= steps.length) idx = steps.length - 1;
+
+      const entry = steps[idx];
+      info.textContent = `Step ${idx} / ${steps.length - 1}`;
+      iInfo.textContent = `i: ${entry.i}`;
+      
+      if (entry.i === 0 && entry.result !== null) {
+        formulaBox.innerHTML = `
+          <div class="formula-title">递推公式: dp[i] = max(dp[i-2] + nums[i], dp[i-1])</div>
+          <div class="formula-content">
+            初始化: <b>dp[0]</b> = <span class="highlight">${entry.result}</span>
+          </div>
+        `;
+      } else if (entry.i === 1 && entry.result !== null) {
+        formulaBox.innerHTML = `
+          <div class="formula-title">递推公式: dp[i] = max(dp[i-2] + nums[i], dp[i-1])</div>
+          <div class="formula-content">
+            初始化: <b>dp[1]</b> = max(nums[0], nums[1]) = <span class="highlight">${entry.result}</span>
+          </div>
+        `;
+      } else if (entry.result !== null) {
+        formulaBox.innerHTML = `
+          <div class="formula-title">递推公式: dp[i] = max(dp[i-2] + nums[i], dp[i-1])</div>
+          <div class="formula-content">
+            当前计算: <b>dp[${entry.i}]</b> = max(dp[${entry.i}-2] + nums[${entry.i}], dp[${entry.i}-1])<br>
+            代入数值: <b>dp[${entry.i}]</b> = max(<span class="highlight">${entry.steal}</span>, <span class="math">${entry.notSteal}</span>) = <b>${entry.result}</b>
+          </div>
+        `;
+      } else {
+        formulaBox.innerHTML = `
+          <div class="formula-title">递推公式: dp[i] = max(dp[i-2] + nums[i], dp[i-1])</div>
+          <div class="formula-content">
+            考虑: 偷 = dp[${entry.i}-2] + nums[${entry.i}] = <span class="highlight">${entry.steal}</span><br>
+            考虑: 不偷 = dp[${entry.i}-1] = <span class="math">${entry.notSteal}</span>
+          </div>
+        `;
+      }
+
+      renderGrid(entry.snapshot, entry.activeIndex, entry.source1Index, entry.source2Index);
+    }
+
+    function resetAll() {
+      stepIndex = 0;
+      document.getElementById('log').innerHTML = '';
+      renderGrid([0,0,0,0,0], -1, -1, -1);
+      document.getElementById('stepInfo').textContent = 'Step 0';
+      document.getElementById('iInfo').textContent = 'i: -';
+      document.getElementById('formulaBox').innerHTML = `
+        <div class="formula-title">递推公式: dp[i] = max(dp[i-2] + nums[i], dp[i-1])</div>
+        <div class="formula-content">等待开始...</div>
+      `;
+    }
+
+    function nextStep() {
+      if (stepIndex >= steps.length) return;
+      const entry = steps[stepIndex];
+      renderStep(stepIndex);
+      renderLog(entry);
+      stepIndex++;
+      if (stepIndex >= steps.length) stopPlay();
+    }
+
+    function prevStep() {
+      if (stepIndex <= 0) return;
+      stepIndex = Math.max(0, stepIndex - 1);
+      document.getElementById('log').innerHTML = '';
+      for (let i = 0; i < stepIndex; i++) {
+        renderLog(steps[i]);
+      }
+      renderStep(stepIndex - 1);
+    }
+
+    function play() {
+      if (playing) return;
+      playing = true;
+      document.getElementById('btnPlay').textContent = '暂停';
+      timer = setInterval(() => nextStep(), 800);
+    }
+
+    function stopPlay() {
+      playing = false;
+      document.getElementById('btnPlay').textContent = '自动播放';
+      if (timer) clearInterval(timer);
+      timer = null;
+    }
+
+    document.getElementById('btnNext').addEventListener('click', nextStep);
+    document.getElementById('btnPrev').addEventListener('click', prevStep);
+    document.getElementById('btnPlay').addEventListener('click', () => {
+      if (playing) stopPlay();
+      else play();
+    });
+    document.getElementById('btnReset').addEventListener('click', () => {
+      stopPlay();
+      resetAll();
+    });
+
+    // 键盘事件监听器
+    document.addEventListener('keydown', (e) => {
+      // 如果用户在输入框中，不响应键盘快捷键
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        return;
+      }
+      
+      if (e.key === 'ArrowLeft') {
+        prevStep();
+        e.preventDefault();
+      } else if (e.key === 'ArrowRight') {
+        nextStep();
+        e.preventDefault();
+      } else if (e.key === ' ') {
+        if (playing) stopPlay();
+        else play();
+        e.preventDefault();
+      }
+    });
+
+    buildSteps();
+    resetAll();
+  </script>
+</body>
+</html>

@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>编辑距离 递推可视化</title>
+  <style>
+    :root {
+      --bg: #1a1b26;
+      --panel: #24283b;
+      --card: #292e42;
+      --text: #a9b1d6;
+      --muted: #565f89;
+      --accent: #bb9af7;
+      --accent-2: #7aa2f7;
+      --good: #9ece6a;
+      --warn: #e0af68;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: radial-gradient(circle at 50% 0%, #24283b, var(--bg));
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header {
+      padding: 32px 20px 10px;
+      text-align: center;
+    }
+    header h1 { 
+      margin: 0 0 8px; 
+      font-size: 28px; 
+      background: linear-gradient(to right, var(--accent), var(--accent-2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    header p { margin: 0; color: var(--muted); }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 20px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid #24283b;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    button {
+      background: var(--accent);
+      border: none;
+      color: #1a1b26;
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    button:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    button.secondary { background: var(--accent-2); color: #1a1b26; }
+    button.ghost { background: transparent; color: var(--text); border: 1px solid #414868; }
+    .chip {
+      background: #24283b;
+      border: 1px solid #414868;
+      padding: 6px 10px;
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .row { display: flex; gap: 12px; align-items: center; }
+    .dp-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(55px, 1fr));
+      gap: 6px;
+      margin-top: 12px;
+    }
+    .cell {
+      background: var(--card);
+      padding: 8px 6px;
+      border-radius: 8px;
+      border: 1px solid #2d2d3d;
+      text-align: center;
+      transition: all 0.3s ease;
+      min-height: 55px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .cell .val { font-size: 18px; font-weight: 700; }
+    .cell .op { font-size: 10px; color: var(--muted); margin-top: 2px; }
+    .cell.active { outline: 2px solid var(--accent); background: #2f334d; }
+    .cell.source { outline: 2px dashed var(--good); background: #223733; }
+    .cell.match { outline: 2px solid var(--warn); background: #332d1d; }
+    .cell.header { background: #1a1b26; font-weight: bold; color: var(--accent-2); }
+    .cell.header .val { font-size: 14px; }
+    .explain {
+      line-height: 1.6;
+      color: var(--text);
+    }
+    .explain h3 { margin-top: 10px; color: var(--accent); }
+    .log {
+      max-height: 240px;
+      overflow: auto;
+      background: #16161e;
+      border-radius: 12px;
+      border: 1px solid #24283b;
+      padding: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12px;
+      color: #a9b1d6;
+    }
+    .log div { padding: 4px 0; border-bottom: 1px solid #1a1b26; }
+    .legend { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 10px; }
+    .legend span { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .dot.active { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+    .dot.source { background: var(--good); box-shadow: 0 0 8px var(--good); }
+    .footer-note { color: var(--muted); font-size: 12px; margin-top: 8px; }
+
+    .formula-display {
+      background: #1a1b26;
+      border: 1px solid #414868;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 16px 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: var(--text);
+    }
+    .formula-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--accent);
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #2d2d3d;
+      letter-spacing: 0.5px;
+    }
+    .formula-content {
+      font-size: 17px;
+      line-height: 1.6;
+    }
+    .formula-content b { color: var(--accent); }
+    .formula-content .highlight { color: var(--good); font-weight: bold; }
+    .formula-content .math { color: var(--warn); }
+
+    .string-display {
+      display: flex;
+      gap: 4px;
+      margin: 12px 0;
+      flex-wrap: wrap;
+    }
+    .char {
+      width: 40px;
+      height: 50px;
+      background: var(--card);
+      border: 2px solid #414868;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: bold;
+      color: var(--text);
+      position: relative;
+    }
+    .char .index {
+      position: absolute;
+      bottom: 2px;
+      font-size: 10px;
+      color: var(--muted);
+    }
+    .char.active { border-color: var(--accent); background: #2f334d; }
+    .char.matched { border-color: var(--good); background: #223733; }
+
+    @media (max-width: 900px) {
+      .container { grid-template-columns: 1fr; }
+      .dp-grid { grid-template-columns: repeat(4, minmax(55px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>编辑距离：递推公式与操作可视化</h1>
+    <p>示例：word1 = "horse"，word2 = "ros"</p>
+  </header>
+
+  <div class="container">
+    <section class="panel">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div class="controls">
+          <button id="btnPrev">上一步</button>
+          <button id="btnNext">下一步</button>
+          <button id="btnPlay" class="secondary">自动播放</button>
+          <button id="btnReset" class="ghost">重置</button>
+        </div>
+      </div>
+      
+      <div class="controls" style="margin-bottom: 12px;">
+        <span class="chip" id="stepInfo">Step 0</span>
+        <span class="chip" id="iInfo">i: -</span>
+        <span class="chip" id="jInfo">j: -</span>
+      </div>
+
+      <div class="legend" style="margin-top:10px;">
+        <span><i class="dot active"></i>当前计算 dp[i][j]</span>
+        <span><i class="dot source"></i>来源单元格</span>
+        <span><i class="dot match"></i>字符匹配</span>
+      </div>
+
+      <div id="formulaBox" class="formula-display">
+        dp[i][j] = dp[i-1][j-1] (if word1[i-1] == word2[j-1])
+      </div>
+
+      <h3>字符串 word1</h3>
+      <div class="string-display" id="word1Display"></div>
+
+      <h3>字符串 word2</h3>
+      <div class="string-display" id="word2Display"></div>
+
+      <h3>DP 表格</h3>
+      <div class="dp-grid" id="dpGrid"></div>
+
+      <h3>操作日志</h3>
+      <div class="log" id="log"></div>
+      <div class="footer-note">操作：插入、删除、替换，每次操作代价为 1</div>
+    </section>
+
+    <section class="panel explain">
+      <h3>问题定义</h3>
+      <p>
+        给定两个单词 word1 和 word2，计算出将 word1 转换成 word2 所使用的最少操作数。
+        可以进行三种操作：插入一个字符、删除一个字符、替换一个字符。
+      </p>
+      
+      <h3>动态规划思路</h3>
+      <p>
+        设 <strong>dp[i][j]</strong> 表示将 word1 的前 i 个字符转换成 word2 的前 j 个字符所需的最少操作数。
+      </p>
+
+      <h3>递推公式</h3>
+      <p>
+        对于每个位置 (i, j)，我们有以下情况：
+      </p>
+      <p style="font-family: monospace; background: #1a1b26; padding: 12px; border-radius: 8px; border: 1px solid #414868;">
+        if word1[i-1] == word2[j-1]:<br/>
+        &nbsp;&nbsp;dp[i][j] = dp[i-1][j-1]  (字符相同，无需操作)<br/>
+        else:<br/>
+        &nbsp;&nbsp;dp[i][j] = min(dp[i-1][j] + 1,      // 删除 word1[i-1]<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;dp[i][j-1] + 1,      // 插入 word2[j-1]<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;dp[i-1][j-1] + 1)   // 替换 word1[i-1] 为 word2[j-1]
+      </p>
+
+      <h3>初始化</h3>
+      <p>
+        <strong>dp[0][j] = j</strong>：将空字符串转换成 word2 的前 j 个字符，需要 j 次插入<br/>
+        <strong>dp[i][0] = i</strong>：将 word1 的前 i 个字符转换成空字符串，需要 i 次删除
+      </p>
+
+      <h3>Java 代码实现</h3>
+      <pre class="code-block" style="background: #16161e; border: 1px solid #414868; border-radius: 12px; padding: 16px; margin: 16px 0; font-family: ui-monospace, monospace; font-size: 13px; color: #a9b1d6; overflow-x: auto;">
+<span style="color: var(--accent);">public int</span> <span style="color: var(--good);">minDistance</span>(String word1, String word2) {
+    <span style="color: var(--accent-2);">int</span> m = word1.<span style="color: var(--good);">length</span>();
+    <span style="color: var(--accent-2);">int</span> n = word2.<span style="color: var(--good);">length</span>();
+    <span style="color: var(--accent-2);">int[][]</span> dp = <span style="color: var(--accent);">new int</span>[m + <span style="color: var(--warn);">1</span>][n + <span style="color: var(--warn);">1</span>];
+    
+    <span style="color: var(--muted);">// 初始化</span>
+    <span style="color: var(--accent);">for</span> (<span style="color: var(--accent-2);">int</span> i = <span style="color: var(--warn);">0</span>; i <= m; i++) dp[i][<span style="color: var(--warn);">0</span>] = i;
+    <span style="color: var(--accent);">for</span> (<span style="color: var(--accent-2);">int</span> j = <span style="color: var(--warn);">0</span>; j <= n; j++) dp[<span style="color: var(--warn);">0</span>][j] = j;
+    
+    <span style="color: var(--accent);">for</span> (<span style="color: var(--accent-2);">int</span> i = <span style="color: var(--warn);">1</span>; i <= m; i++) {
+        <span style="color: var(--accent);">for</span> (<span style="color: var(--accent-2);">int</span> j = <span style="color: var(--warn);">1</span>; j <= n; j++) {
+            <span style="color: var(--accent);">if</span> (word1.<span style="color: var(--good);">charAt</span>(i - <span style="color: var(--warn);">1</span>) == word2.<span style="color: var(--good);">charAt</span>(j - <span style="color: var(--warn);">1</span>)) {
+                dp[i][j] = dp[i - <span style="color: var(--warn);">1</span>][j - <span style="color: var(--warn);">1</span>];  <span style="color: var(--muted);">// 字符相同，无需操作</span>
+            } <span style="color: var(--accent);">else</span> {
+                <span style="color: var(--muted);">// 递推公式：取最小值 + 1</span>
+                dp[i][j] = Math.<span style="color: var(--good);">min</span>(
+                    Math.<span style="color: var(--good);">min</span>(dp[i - <span style="color: var(--warn);">1</span>][j], dp[i][j - <span style="color: var(--warn);">1</span>]),
+                    dp[i - <span style="color: var(--warn);">1</span>][j - <span style="color: var(--warn);">1</span>]
+                ) + <span style="color: var(--warn);">1</span>;
+            }
+        }
+    }
+    <span style="color: var(--accent);">return</span> dp[m][n];
+}</pre>
+
+      <h3>本例分析</h3>
+      <p>
+        word1 = "horse"，word2 = "ros"<br/>
+        最终编辑距离：<strong>3</strong><br/>
+        操作步骤：<br/>
+        1. horse → rorse (替换 'h' 为 'r')<br/>
+        2. rorse → rose (删除 'r')<br/>
+        3. rose → ros (删除 'e')
+      </p>
+    </section>
+  </div>
+
+  <script>
+    const word1 = "horse";
+    const word2 = "ros";
+
+    const m = word1.length;
+    const n = word2.length;
+
+    const dp = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+
+    const steps = [];
+    let stepIndex = 0;
+    let playing = false;
+    let timer = null;
+
+    function buildSteps() {
+      steps.length = 0;
+      const temp = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+      
+      // 初始化
+      for (let i = 0; i <= m; i++) temp[i][0] = i;
+      for (let j = 0; j <= n; j++) temp[0][j] = j;
+      
+      let stepCount = 0;
+
+      // 记录初始化步骤
+      steps.push({
+        s: stepCount++,
+        type: 'init',
+        i: -1,
+        j: -1,
+        snapshot: temp.map(row => [...row])
+      });
+
+      for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+          const charsMatch = word1[i - 1] === word2[j - 1];
+          let operation, source;
+          
+          if (charsMatch) {
+            temp[i][j] = temp[i - 1][j - 1];
+            operation = '无需操作';
+            source = { i: i - 1, j: j - 1 };
+          } else {
+            const del = temp[i - 1][j] + 1;
+            const ins = temp[i][j - 1] + 1;
+            const rep = temp[i - 1][j - 1] + 1;
+            
+            const minVal = Math.min(del, ins, rep);
+            temp[i][j] = minVal;
+            
+            if (minVal === del) {
+              operation = '删除';
+              source = { i: i - 1, j };
+            } else if (minVal === ins) {
+              operation = '插入';
+              source = { i, j: j - 1 };
+            } else {
+              operation = '替换';
+              source = { i: i - 1, j: j - 1 };
+            }
+          }
+
+          steps.push({
+            s: stepCount++,
+            type: 'compute',
+            i: i,
+            j: j,
+            char1: word1[i - 1],
+            char2: word2[j - 1],
+            charsMatch: charsMatch,
+            operation: operation,
+            source: source,
+            value: temp[i][j],
+            snapshot: temp.map(row => [...row])
+          });
+        }
+      }
+    }
+
+    function renderStringDisplay(activeIndex, word, containerId) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = '';
+      
+      for (let i = 0; i < word.length; i++) {
+        const char = document.createElement('div');
+        char.className = 'char';
+        char.textContent = word[i];
+        char.innerHTML = `${word[i]}<div class="index">${i}</div>`;
+        
+        if (i === activeIndex) char.classList.add('active');
+        
+        container.appendChild(char);
+      }
+    }
+
+    function renderGrid(snapshot, activeIndex) {
+      const grid = document.getElementById('dpGrid');
+      grid.innerHTML = '';
+      
+      // Header row
+      const emptyCell = document.createElement('div');
+      emptyCell.className = 'cell header';
+      emptyCell.innerHTML = '<div class="val">∅</div>';
+      grid.appendChild(emptyCell);
+      
+      for (let j = 0; j <= n; j++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell header';
+        cell.innerHTML = `<div class="val">${j === 0 ? '∅' : word2[j - 1]}</div>`;
+        grid.appendChild(cell);
+      }
+      
+      // Data rows
+      for (let i = 0; i <= m; i++) {
+        const headerCell = document.createElement('div');
+        headerCell.className = 'cell header';
+        headerCell.innerHTML = `<div class="val">${i === 0 ? '∅' : word1[i - 1]}</div>`;
+        grid.appendChild(headerCell);
+        
+        for (let j = 0; j <= n; j++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          if (activeIndex && activeIndex.i === i && activeIndex.j === j) {
+            cell.classList.add('active');
+          }
+          
+          cell.innerHTML = `<div class="val">${snapshot[i][j]}</div>`;
+          grid.appendChild(cell);
+        }
+      }
+    }
+
+    function renderLog(entry) {
+      const log = document.getElementById('log');
+      if (!entry) return;
+      const line = document.createElement('div');
+      
+      if (entry.type === 'init') {
+        line.textContent = `初始化：dp[0][j] = j, dp[i][0] = i`;
+      } else {
+        const matchStatus = entry.charsMatch ? '匹配' : '不匹配';
+        line.textContent = `i=${entry.i}, j=${entry.j}: '${entry.char1}' vs '${entry.char2}' ${matchStatus} → ${entry.operation} → dp[${entry.i}][${entry.j}] = ${entry.value}`;
+      }
+      log.appendChild(line);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function renderStep(idx) {
+      const info = document.getElementById('stepInfo');
+      const iInfo = document.getElementById('iInfo');
+      const jInfo = document.getElementById('jInfo');
+      const formulaBox = document.getElementById('formulaBox');
+
+      if (idx < 0) idx = 0;
+      if (idx >= steps.length) idx = steps.length - 1;
+
+      const entry = steps[idx];
+      info.textContent = `Step ${idx + 1} / ${steps.length}`;
+      
+      if (entry.type === 'init') {
+        iInfo.textContent = 'i: 初始化';
+        jInfo.textContent = 'j: 初始化';
+        formulaBox.innerHTML = `
+          <div class="formula-title">初始化</div>
+          <div class="formula-content">
+            dp[0][j] = j (空字符串转换需要 j 次插入)<br>
+            dp[i][0] = i (转换成空字符串需要 i 次删除)
+          </div>
+        `;
+        renderStringDisplay(-1, word1, 'word1Display');
+        renderStringDisplay(-1, word2, 'word2Display');
+      } else {
+        iInfo.textContent = `i: ${entry.i}`;
+        jInfo.textContent = `j: ${entry.j}`;
+        
+        if (entry.charsMatch) {
+          formulaBox.innerHTML = `
+            <div class="formula-title">字符匹配</div>
+            <div class="formula-content">
+              word1[${entry.i-1}] = word2[${entry.j-1}] = '<span class="highlight">${entry.char1}</span>'<br>
+              dp[${entry.i}][${entry.j}] = dp[${entry.i-1}][${entry.j-1}] = <b style="color: var(--good);">${entry.value}</b>
+            </div>
+          `;
+        } else {
+          formulaBox.innerHTML = `
+            <div class="formula-title">字符不匹配</div>
+            <div class="formula-content">
+              word1[${entry.i-1}] = '${entry.char1}' ≠ word2[${entry.j-1}] = '${entry.char2}'<br>
+              选择操作：<span class="highlight">${entry.operation}</span><br>
+              dp[${entry.i}][${entry.j}] = min(dp[${entry.source.i}][${entry.source.j}]) + 1 = <b style="color: var(--good);">${entry.value}</b>
+            </div>
+          `;
+        }
+        renderStringDisplay(entry.i - 1, word1, 'word1Display');
+        renderStringDisplay(entry.j - 1, word2, 'word2Display');
+      }
+
+      renderGrid(entry.snapshot, entry.type === 'compute' ? { i: entry.i, j: entry.j } : null);
+    }
+
+    function resetAll() {
+      stepIndex = 0;
+      document.getElementById('log').innerHTML = '';
+      document.getElementById('dpGrid').innerHTML = '';
+      document.getElementById('stepInfo').textContent = 'Step 0';
+      document.getElementById('iInfo').textContent = 'i: -';
+      document.getElementById('jInfo').textContent = 'j: -';
+      document.getElementById('formulaBox').innerHTML = `
+        <div class="formula-title">递推公式</div>
+        <div class="formula-content">等待开始...</div>
+      `;
+    }
+
+    function nextStep() {
+      if (stepIndex >= steps.length) return;
+      const entry = steps[stepIndex];
+      renderStep(stepIndex);
+      renderLog(entry);
+      stepIndex++;
+      if (stepIndex >= steps.length) stopPlay();
+    }
+
+    function prevStep() {
+      if (stepIndex <= 0) return;
+      stepIndex = Math.max(0, stepIndex - 1);
+      document.getElementById('log').innerHTML = '';
+      for (let i = 0; i < stepIndex; i++) {
+        renderLog(steps[i]);
+      }
+      renderStep(stepIndex - 1);
+    }
+
+    function play() {
+      if (playing) return;
+      playing = true;
+      document.getElementById('btnPlay').textContent = '暂停';
+      timer = setInterval(() => nextStep(), 600);
+    }
+
+    function stopPlay() {
+      playing = false;
+      document.getElementById('btnPlay').textContent = '自动播放';
+      if (timer) clearInterval(timer);
+      timer = null;
+    }
+
+    document.getElementById('btnNext').addEventListener('click', nextStep);
+    document.getElementById('btnPrev').addEventListener('click', prevStep);
+    document.getElementById('btnPlay').addEventListener('click', () => {
+      if (playing) stopPlay();
+      else play();
+    });
+    document.getElementById('btnReset').addEventListener('click', () => {
+      stopPlay();
+      resetAll();
+    });
+
+    // 键盘事件监听器
+    document.addEventListener('keydown', (e) => {
+      // 如果用户在输入框中，不响应键盘快捷键
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        return;
+      }
+      
+      if (e.key === 'ArrowLeft') {
+        prevStep();
+        e.preventDefault();
+      } else if (e.key === 'ArrowRight') {
+        nextStep();
+        e.preventDefault();
+      } else if (e.key === ' ') {
+        if (playing) stopPlay();
+        else play();
+        e.preventDefault();
+      }
+    });
+
+    buildSteps();
+    resetAll();
+  </script>
+</body>
+</html>

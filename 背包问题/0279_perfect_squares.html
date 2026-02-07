@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>完全平方数 递推可视化</title>
+  <style>
+    :root {
+      --bg: #1a1b26;
+      --panel: #24283b;
+      --card: #292e42;
+      --text: #a9b1d6;
+      --muted: #565f89;
+      --accent: #bb9af7;
+      --accent-2: #7aa2f7;
+      --good: #9ece6a;
+      --warn: #e0af68;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: radial-gradient(circle at 50% 0%, #24283b, var(--bg));
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header {
+      padding: 32px 20px 10px;
+      text-align: center;
+    }
+    header h1 { 
+      margin: 0 0 8px; 
+      font-size: 28px; 
+      background: linear-gradient(to right, var(--accent), var(--accent-2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    header p { margin: 0; color: var(--muted); }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 20px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid #24283b;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    button {
+      background: var(--accent);
+      border: none;
+      color: #1a1b26;
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    button:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    button.secondary { background: var(--accent-2); color: #1a1b26; }
+    button.ghost { background: transparent; color: var(--text); border: 1px solid #414868; }
+    .chip {
+      background: #24283b;
+      border: 1px solid #414868;
+      padding: 6px 10px;
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .row { display: flex; gap: 12px; align-items: center; }
+    .dp-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(60px, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .cell {
+      background: var(--card);
+      padding: 10px 8px;
+      border-radius: 10px;
+      border: 1px solid #2d2d3d;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+    .cell .idx { font-size: 13px; color: var(--muted); font-weight: 600; }
+    .cell .val { font-size: 18px; font-weight: 700; }
+    .cell.active { outline: 2px solid var(--accent); background: #2f334d; }
+    .cell.source { outline: 2px dashed var(--good); background: #223733; }
+    .cell.inf { color: var(--warn); }
+    .explain {
+      line-height: 1.6;
+      color: var(--text);
+    }
+    .explain h3 { margin-top: 10px; color: var(--accent); }
+    .log {
+      max-height: 240px;
+      overflow: auto;
+      background: #16161e;
+      border-radius: 12px;
+      border: 1px solid #24283b;
+      padding: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12px;
+      color: #a9b1d6;
+    }
+    .log div { padding: 4px 0; border-bottom: 1px solid #1a1b26; }
+    .legend { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 10px; }
+    .legend span { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .dot.active { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+    .dot.source { background: var(--good); box-shadow: 0 0 8px var(--good); }
+    .footer-note { color: var(--muted); font-size: 12px; margin-top: 8px; }
+
+    .formula-display {
+      background: #1a1b26;
+      border: 1px solid #414868;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 16px 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: var(--text);
+    }
+    .formula-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--accent);
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #2d2d3d;
+      letter-spacing: 0.5px;
+    }
+    .formula-content {
+      font-size: 17px;
+      line-height: 1.6;
+    }
+    .formula-content b { color: var(--accent); }
+    .formula-content .highlight { color: var(--good); font-weight: bold; }
+    .formula-content .math { color: var(--warn); }
+
+    .squares-display {
+      display: flex;
+      gap: 12px;
+      margin: 12px 0;
+      flex-wrap: wrap;
+    }
+    .square {
+      width: 60px;
+      height: 60px;
+      background: var(--card);
+      border: 3px solid var(--accent-2);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: bold;
+      color: var(--accent-2);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    }
+    .square.active { border-color: var(--accent); color: var(--accent); background: #2f334d; }
+
+    @media (max-width: 900px) {
+      .container { grid-template-columns: 1fr; }
+      .dp-grid { grid-template-columns: repeat(4, minmax(60px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>完全平方数：递推公式与遍历顺序可视化</h1>
+    <p>示例：n = 12，可用完全平方数：[1, 4, 9]</p>
+  </header>
+
+  <div class="container">
+    <section class="panel">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div class="controls">
+          <button id="btnPrev">上一步</button>
+          <button id="btnNext">下一步</button>
+          <button id="btnPlay" class="secondary">自动播放</button>
+          <button id="btnReset" class="ghost">重置</button>
+        </div>
+      </div>
+      
+      <div class="controls" style="margin-bottom: 12px;">
+        <span class="chip" id="stepInfo">Step 0</span>
+        <span class="chip" id="squareInfo">square: -</span>
+        <span class="chip" id="jInfo">j: -</span>
+      </div>
+
+      <div class="legend" style="margin-top:10px;">
+        <span><i class="dot active"></i>当前更新 dp[j]</span>
+        <span><i class="dot source"></i>来源 dp[j-square]</span>
+      </div>
+
+      <div id="formulaBox" class="formula-display">
+        dp[j] = min(dp[j], dp[j - square] + 1)
+      </div>
+
+      <h3>可用完全平方数</h3>
+      <div class="squares-display" id="squaresDisplay"></div>
+
+      <h3>DP 数组</h3>
+      <div class="dp-grid" id="dpGrid"></div>
+
+      <h3>操作日志</h3>
+      <div class="log" id="log"></div>
+      <div class="footer-note">公式：dp[j] = min(dp[j], dp[j - square] + 1)</div>
+    </section>
+
+    <section class="panel explain">
+      <h3>问题定义</h3>
+      <p>
+        给定正整数 n，找到若干个完全平方数（比如 1, 4, 9, 16, ...）使得它们的和等于 n。
+        你需要让组成和的完全平方数的个数最少。
+      </p>
+      
+      <h3>动态规划思路</h3>
+      <p>
+        设 <strong>dp[j]</strong> 表示组成数字 j 所需的最少完全平方数个数。
+      </p>
+
+      <h3>递推公式</h3>
+      <p>
+        对于每个完全平方数 square，对于每个数字 j（从 square 到 n）：
+      </p>
+      <p style="font-family: monospace; background: #1a1b26; padding: 12px; border-radius: 8px; border: 1px solid #414868;">
+        dp[j] = min(dp[j], dp[j - square] + 1)
+      </p>
+      <p>
+        其中：
+        - <strong>dp[j]</strong>：不使用当前完全平方数时的最少个数
+        - <strong>dp[j - square] + 1</strong>：使用当前完全平方数时的最少个数（组成 j - square 的个数 + 1）
+      </p>
+
+      <h3>初始化</h3>
+      <p>
+        <strong>dp[0] = 0</strong>：组成数字 0 需要 0 个完全平方数<br/>
+        <strong>dp[j] = ∞</strong>（j > 0）：初始时设为无穷大，表示无法组成
+      </p>
+
+      <h3>遍历顺序</h3>
+      <p>
+        外层循环遍历完全平方数，内层循环数字递增。
+        这样可以确保每种完全平方数可以被使用多次（完全背包问题）。
+      </p>
+
+      <h3>Java 代码实现</h3>
+      <pre class="code-block" style="background: #16161e; border: 1px solid #414868; border-radius: 12px; padding: 16px; margin: 16px 0; font-family: ui-monospace, monospace; font-size: 13px; color: #a9b1d6; overflow-x: auto;">
+<span style="color: var(--accent);">public int</span> <span style="color: var(--good);">numSquares</span>(<span style="color: var(--accent-2);">int</span> n) {
+    <span style="color: var(--accent-2);">int</span> max = n + <span style="color: var(--warn);">1</span>;
+    <span style="color: var(--accent-2);">int[]</span> dp = <span style="color: var(--accent);">new int</span>[n + <span style="color: var(--warn);">1</span>];
+    Arrays.<span style="color: var(--good);">fill</span>(dp, max);  <span style="color: var(--muted);">// 初始化为无穷大</span>
+    dp[<span style="color: var(--warn);">0</span>] = <span style="color: var(--warn);">0</span>;  <span style="color: var(--muted);">// 组成数字 0 需要 0 个完全平方数</span>
+    
+    <span style="color: var(--accent);">for</span> (<span style="color: var(--accent-2);">int</span> i = <span style="color: var(--warn);">1</span>; i * i <= n; i++) {
+        <span style="color: var(--accent-2);">int</span> square = i * i;
+        <span style="color: var(--accent);">for</span> (<span style="color: var(--accent-2);">int</span> j = square; j <= n; j++) {
+            <span style="color: var(--muted);">// 递推公式：取最小值</span>
+            dp[j] = Math.<span style="color: var(--good);">min</span>(dp[j], dp[j - square] + <span style="color: var(--warn);">1</span>);
+        }
+    }
+    <span style="color: var(--accent);">return</span> dp[n];
+}</pre>
+
+      <h3>本例分析</h3>
+      <p>
+        n = 12，可用完全平方数：[1, 4, 9]<br/>
+        最终最少个数：<strong>3</strong>（4 + 4 + 4）
+      </p>
+    </section>
+  </div>
+
+  <script>
+    const n = 12;
+    const squares = [];
+    for (let i = 1; i * i <= n; i++) {
+      squares.push(i * i);
+    }
+
+    const dp = Array(n + 1).fill(n + 1);
+    dp[0] = 0;
+
+    const steps = [];
+    let stepIndex = 0;
+    let playing = false;
+    let timer = null;
+
+    function buildSteps() {
+      steps.length = 0;
+      const temp = Array(n + 1).fill(n + 1);
+      temp[0] = 0;
+      let stepCount = 0;
+
+      // 记录初始化步骤
+      steps.push({
+        s: stepCount++,
+        type: 'init',
+        snapshot: [...temp]
+      });
+
+      for (let square of squares) {
+        for (let j = square; j <= n; j++) {
+          const before = temp[j];
+          const add = temp[j - square] + 1;
+          temp[j] = Math.min(before, add);
+          
+          steps.push({
+            s: stepCount++,
+            type: 'compute',
+            square: square,
+            j: j,
+            before: before,
+            add: add,
+            after: temp[j],
+            improved: temp[j] < before,
+            snapshot: [...temp],
+            sourceIndex: j - square
+          });
+        }
+      }
+    }
+
+    function renderSquaresDisplay(activeSquare) {
+      const container = document.getElementById('squaresDisplay');
+      container.innerHTML = '';
+      
+      squares.forEach(square => {
+        const div = document.createElement('div');
+        div.className = 'square';
+        div.textContent = square;
+        if (square === activeSquare) div.classList.add('active');
+        container.appendChild(div);
+      });
+    }
+
+    function renderGrid(snapshot, activeIndex, sourceIndex) {
+      const grid = document.getElementById('dpGrid');
+      grid.innerHTML = '';
+      
+      snapshot.forEach((val, idx) => {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        if (idx === activeIndex) cell.classList.add('active');
+        if (idx === sourceIndex) cell.classList.add('source');
+        if (val > n) cell.classList.add('inf');
+        
+        const displayVal = val > n ? '∞' : val;
+        cell.innerHTML = `<div class="idx">j=${idx}</div><div class="val">${displayVal}</div>`;
+        grid.appendChild(cell);
+      });
+    }
+
+    function renderLog(entry) {
+      const log = document.getElementById('log');
+      if (!entry) return;
+      const line = document.createElement('div');
+      
+      if (entry.type === 'init') {
+        line.textContent = `初始化：dp[0]=0, dp[j]=∞ (j>0)`;
+      } else {
+        const beforeVal = entry.before > n ? '∞' : entry.before;
+        const addVal = entry.add > n ? '∞' : entry.add;
+        const afterVal = entry.after > n ? '∞' : entry.after;
+        const status = entry.improved ? '✓ 更新' : '不变';
+        line.textContent = `square=${entry.square}, j=${entry.j}: dp[${entry.j}] = min(${beforeVal}, ${addVal}) = ${afterVal} ${status}`;
+        line.style.color = entry.improved ? 'var(--good)' : 'var(--muted)';
+      }
+      log.appendChild(line);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function renderStep(idx) {
+      const info = document.getElementById('stepInfo');
+      const squareInfo = document.getElementById('squareInfo');
+      const jInfo = document.getElementById('jInfo');
+      const formulaBox = document.getElementById('formulaBox');
+
+      if (idx < 0) idx = 0;
+      if (idx >= steps.length) idx = steps.length - 1;
+
+      const entry = steps[idx];
+      info.textContent = `Step ${idx + 1} / ${steps.length}`;
+      
+      if (entry.type === 'init') {
+        squareInfo.textContent = 'square: 初始化';
+        jInfo.textContent = 'j: 初始化';
+        formulaBox.innerHTML = `
+          <div class="formula-title">初始化</div>
+          <div class="formula-content">
+            dp[0] = 0 (组成数字 0 需要 0 个完全平方数)<br>
+            dp[j] = ∞ (j > 0，初始设为无穷大)
+          </div>
+        `;
+        renderSquaresDisplay(null);
+      } else {
+        squareInfo.textContent = `square: ${entry.square}`;
+        jInfo.textContent = `j: ${entry.j}`;
+        
+        const beforeVal = entry.before > n ? '∞' : entry.before;
+        const addVal = entry.add > n ? '∞' : entry.add;
+        const afterVal = entry.after > n ? '∞' : entry.after;
+        
+        formulaBox.innerHTML = `
+          <div class="formula-title">递推公式: dp[j] = min(dp[j], dp[j - square] + 1)</div>
+          <div class="formula-content">
+            当前计算: <b>dp[${entry.j}]</b> = min(${beforeVal}, dp[${entry.j - entry.square}] + 1)<br>
+            代入数值: <b>dp[${entry.j}]</b> = min(${beforeVal}, <span class="highlight">${addVal}</span>) = <b>${afterVal}</b>
+          </div>
+        `;
+        renderSquaresDisplay(entry.square);
+      }
+
+      renderGrid(entry.snapshot, entry.type === 'compute' ? entry.j : -1, entry.sourceIndex);
+    }
+
+    function resetAll() {
+      stepIndex = 0;
+      document.getElementById('log').innerHTML = '';
+      renderSquaresDisplay(null);
+      document.getElementById('dpGrid').innerHTML = '';
+      document.getElementById('stepInfo').textContent = 'Step 0';
+      document.getElementById('squareInfo').textContent = 'square: -';
+      document.getElementById('jInfo').textContent = 'j: -';
+      document.getElementById('formulaBox').innerHTML = `
+        <div class="formula-title">递推公式: dp[j] = min(dp[j], dp[j - square] + 1)</div>
+        <div class="formula-content">等待开始...</div>
+      `;
+    }
+
+    function nextStep() {
+      if (stepIndex >= steps.length) return;
+      const entry = steps[stepIndex];
+      renderStep(stepIndex);
+      renderLog(entry);
+      stepIndex++;
+      if (stepIndex >= steps.length) stopPlay();
+    }
+
+    function prevStep() {
+      if (stepIndex <= 0) return;
+      stepIndex = Math.max(0, stepIndex - 1);
+      document.getElementById('log').innerHTML = '';
+      for (let i = 0; i < stepIndex; i++) {
+        renderLog(steps[i]);
+      }
+      renderStep(stepIndex - 1);
+    }
+
+    function play() {
+      if (playing) return;
+      playing = true;
+      document.getElementById('btnPlay').textContent = '暂停';
+      timer = setInterval(() => nextStep(), 600);
+    }
+
+    function stopPlay() {
+      playing = false;
+      document.getElementById('btnPlay').textContent = '自动播放';
+      if (timer) clearInterval(timer);
+      timer = null;
+    }
+
+    document.getElementById('btnNext').addEventListener('click', nextStep);
+    document.getElementById('btnPrev').addEventListener('click', prevStep);
+    document.getElementById('btnPlay').addEventListener('click', () => {
+      if (playing) stopPlay();
+      else play();
+    });
+    document.getElementById('btnReset').addEventListener('click', () => {
+      stopPlay();
+      resetAll();
+    });
+
+    // 键盘事件监听器
+    document.addEventListener('keydown', (e) => {
+      // 如果用户在输入框中，不响应键盘快捷键
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        return;
+      }
+      
+      if (e.key === 'ArrowLeft') {
+        prevStep();
+        e.preventDefault();
+      } else if (e.key === 'ArrowRight') {
+        nextStep();
+        e.preventDefault();
+      } else if (e.key === ' ') {
+        if (playing) stopPlay();
+        else play();
+        e.preventDefault();
+      }
+    });
+
+    buildSteps();
+    resetAll();
+  </script>
+</body>
+</html>

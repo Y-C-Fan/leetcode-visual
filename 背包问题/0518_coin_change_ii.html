@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>零钱兑换 II 递推可视化</title>
+  <style>
+    :root {
+      --bg: #1a1b26;
+      --panel: #24283b;
+      --card: #292e42;
+      --text: #a9b1d6;
+      --muted: #565f89;
+      --accent: #bb9af7;
+      --accent-2: #7aa2f7;
+      --good: #9ece6a;
+      --warn: #e0af68;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: radial-gradient(circle at 50% 0%, #24283b, var(--bg));
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header {
+      padding: 32px 20px 10px;
+      text-align: center;
+    }
+    header h1 { 
+      margin: 0 0 8px; 
+      font-size: 28px; 
+      background: linear-gradient(to right, var(--accent), var(--accent-2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    header p { margin: 0; color: var(--muted); }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 20px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid #24283b;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    button {
+      background: var(--accent);
+      border: none;
+      color: #1a1b26;
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    button:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    button.secondary { background: var(--accent-2); color: #1a1b26; }
+    button.ghost { background: transparent; color: var(--text); border: 1px solid #414868; }
+    button.active-mode { background: var(--accent-2); color: white; }
+    .chip {
+      background: #24283b;
+      border: 1px solid #414868;
+      padding: 6px 10px;
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .row { display: flex; gap: 12px; align-items: center; }
+    .dp-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(60px, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .cell {
+      background: var(--card);
+      padding: 10px 8px;
+      border-radius: 10px;
+      border: 1px solid #2d2d3d;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+    .cell .idx { font-size: 13px; color: var(--muted); font-weight: 600; }
+    .cell .val { font-size: 18px; font-weight: 700; }
+    .cell.active { outline: 2px solid var(--accent); background: #2f334d; }
+    .cell.source { outline: 2px dashed var(--good); background: #223733; }
+    .explain {
+      line-height: 1.6;
+      color: var(--text);
+    }
+    .explain h3 { margin-top: 10px; color: var(--accent); }
+    .log {
+      max-height: 240px;
+      overflow: auto;
+      background: #16161e;
+      border-radius: 12px;
+      border: 1px solid #24283b;
+      padding: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12px;
+      color: #a9b1d6;
+    }
+    .log div { padding: 4px 0; border-bottom: 1px solid #1a1b26; }
+    .legend { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 10px; }
+    .legend span { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .dot.active { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+    .dot.source { background: var(--good); box-shadow: 0 0 8px var(--good); }
+    .dot.coin { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+    .footer-note { color: var(--muted); font-size: 12px; margin-top: 8px; }
+
+    .formula-display {
+      background: #1a1b26;
+      border: 1px solid #414868;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 16px 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: var(--text);
+    }
+    .formula-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--accent);
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #2d2d3d;
+      letter-spacing: 0.5px;
+    }
+    .formula-content {
+      font-size: 17px;
+      line-height: 1.6;
+    }
+    .formula-content b { color: var(--accent); }
+    .formula-content .highlight { color: var(--good); font-weight: bold; }
+    .formula-content .math { color: var(--warn); }
+
+    @media (max-width: 900px) {
+      .container { grid-template-columns: 1fr; }
+      .dp-grid { grid-template-columns: repeat(3, minmax(60px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>零钱兑换 II：递推公式与遍历顺序可视化</h1>
+    <p>示例：amount = 5，coins = [1, 2, 5]</p>
+  </header>
+
+  <div class="container">
+    <section class="panel">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div class="controls">
+          <button id="btnPrev">上一步</button>
+          <button id="btnNext">下一步</button>
+          <button id="btnPlay" class="secondary">自动播放</button>
+          <button id="btnReset" class="ghost">重置</button>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button id="modeCombo" class="active-mode" style="padding: 6px 12px; font-size: 13px;">组合 (LeetCode 518)</button>
+          <button id="modePermu" class="ghost" style="padding: 6px 12px; font-size: 13px;">排列 (寻找排列数)</button>
+        </div>
+      </div>
+      
+      <div class="controls" style="margin-bottom: 12px;">
+        <span class="chip" id="stepInfo">Step 0</span>
+        <span class="chip" id="iInfo">i: -</span>
+        <span class="chip" id="coinInfo">coin: -</span>
+        <span class="chip" id="jInfo">j: -</span>
+      </div>
+
+      <div class="legend" style="margin-top:10px;">
+        <span><i class="dot active"></i>当前更新 dp[j]</span>
+        <span><i class="dot source"></i>来源 dp[j-coin]</span>
+        <span><i class="dot coin"></i>正在使用的 coin</span>
+      </div>
+
+      <div id="formulaBox" class="formula-display">
+        dp[j] = dp[j] + dp[j - coin]
+      </div>
+
+      <div class="dp-grid" id="dpGrid"></div>
+
+      <h3>操作日志</h3>
+      <div class="log" id="log"></div>
+      <div class="footer-note">公式：dp[j] += dp[j - coin]</div>
+    </section>
+
+    <section class="panel explain">
+      <h3>递推公式是怎么来的？</h3>
+      <p>
+        设 <strong>dp[j]</strong> 表示“当前处理到第 i 个硬币时，组成金额 j 的组合数”。
+        当我们处理 coin = c 时，对于每个 j ≥ c：
+      </p>
+      <p>
+        - 组成 j 的方案数 = 之前已有的方案（不使用当前硬币） + 使用当前硬币的方案。<br/>
+        - 使用当前硬币的方案等价于：先组成 j - c，再追加一个硬币 c。<br/>
+        因此有：<strong>dp[j] = dp[j] + dp[j - c]</strong>。
+      </p>
+
+      <h3>为什么是组合（无序）？</h3>
+      <p>
+        外层遍历硬币，内层金额递增：
+        这样每种“硬币集合”只会被计算一次，不会因为顺序不同而重复计数。
+        例如 2+1 和 1+2 只在处理 coin=2 时被统一计入，不会被再次计数。
+      </p>
+
+      <h3>排列（有序）如何理解？</h3>
+      <p>
+        如果把外层改成金额，内层遍历硬币：
+        每次都允许“任何硬币在最后一位”，就会把顺序不同的方案都统计进去。
+        例如 1+2 和 2+1 会作为不同路径分别累计，得到的是排列数。
+      </p>
+
+      <h3>本例最终结果</h3>
+      <p>
+        amount=5, coins=[1,2,5] 的组合数为 <strong>4</strong>：
+        {5}, {2+2+1}, {2+1+1+1}, {1+1+1+1+1}。
+      </p>
+    </section>
+  </div>
+
+  <script>
+    const amount = 5;
+    const coins = [1, 2, 5];
+
+    const dp = Array(amount + 1).fill(0);
+    dp[0] = 1;
+
+    const steps = [];
+    let stepIndex = 0;
+    let playing = false;
+    let timer = null;
+    let currentMode = 'combo'; // 'combo' or 'permu'
+
+    function buildSteps(mode) {
+      steps.length = 0;
+      const temp = Array(amount + 1).fill(0);
+      temp[0] = 1;
+      let s = 0;
+
+      if (mode === 'combo') {
+        // Combination: Coins then Amount
+        for (let i = 0; i < coins.length; i++) {
+          const c = coins[i];
+          for (let j = c; j <= amount; j++) {
+            const before = temp[j];
+            const add = temp[j - c];
+            temp[j] = before + add;
+            steps.push({
+              s: s++,
+              i: i,
+              coin: c,
+              j,
+              before,
+              add,
+              after: temp[j],
+              snapshot: [...temp],
+              sourceIndex: j - c
+            });
+          }
+        }
+      } else {
+        // Permutation: Amount then Coins
+        for (let j = 1; j <= amount; j++) {
+          for (let i = 0; i < coins.length; i++) {
+            const c = coins[i];
+            if (j >= c) {
+              const before = temp[j];
+              const add = temp[j - c];
+              temp[j] = before + add;
+              steps.push({
+                s: s++,
+                i: i,
+                coin: c,
+                j,
+                before,
+                add,
+                after: temp[j],
+                snapshot: [...temp],
+                sourceIndex: j - c
+              });
+            }
+          }
+        }
+      }
+    }
+
+    function renderGrid(snapshot, activeIndex, sourceIndex) {
+      const grid = document.getElementById('dpGrid');
+      grid.innerHTML = '';
+      snapshot.forEach((val, idx) => {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        if (idx === activeIndex) cell.classList.add('active');
+        if (idx === sourceIndex) cell.classList.add('source');
+        cell.innerHTML = `<div class="idx">j=${idx}</div><div class="val">${val}</div>`;
+        grid.appendChild(cell);
+      });
+    }
+
+    function renderLog(entry) {
+      const log = document.getElementById('log');
+      if (!entry) return;
+      const line = document.createElement('div');
+      line.textContent = `coin=${entry.coin}, j=${entry.j}: dp[${entry.j}] = ${entry.before} + dp[${entry.sourceIndex}](${entry.add}) => ${entry.after}`;
+      log.appendChild(line);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function renderStep(idx) {
+      const info = document.getElementById('stepInfo');
+      const iInfo = document.getElementById('iInfo');
+      const coinInfo = document.getElementById('coinInfo');
+      const jInfo = document.getElementById('jInfo');
+      const formulaBox = document.getElementById('formulaBox');
+
+      if (idx < 0) idx = 0;
+      if (idx >= steps.length) idx = steps.length - 1;
+
+      const entry = steps[idx];
+      info.textContent = `Step ${idx + 1} / ${steps.length}`;
+      iInfo.textContent = `i: ${entry.i}`;
+      coinInfo.textContent = `coin: ${entry.coin}`;
+      jInfo.textContent = `j: ${entry.j}`;
+      
+      // Update real-time formula
+      formulaBox.innerHTML = `
+        <div class="formula-title">通用公式: dp[j] = dp[j] + dp[j - coin]</div>
+        <div class="formula-content">
+          当前计算: <b>dp[${entry.j}]</b> = ${entry.before} + <span class="highlight">dp[${entry.j} - ${entry.coin}]</span><br>
+          代入数值: <b>dp[${entry.j}]</b> = ${entry.before} + <span class="highlight">${entry.add}</span> = <b>${entry.after}</b>
+        </div>
+      `;
+
+      renderGrid(entry.snapshot, entry.j, entry.sourceIndex);
+    }
+
+    function resetAll() {
+      stepIndex = 0;
+      document.getElementById('log').innerHTML = '';
+      renderGrid([1,0,0,0,0,0], -1, -1);
+      document.getElementById('stepInfo').textContent = 'Step 0';
+      document.getElementById('iInfo').textContent = 'i: -';
+      document.getElementById('coinInfo').textContent = 'coin: -';
+      document.getElementById('jInfo').textContent = 'j: -';
+      document.getElementById('formulaBox').innerHTML = `
+        <div class="formula-title">通用公式: dp[j] = dp[j] + dp[j - coin]</div>
+        <div class="formula-content">等待开始...</div>
+      `;
+    }
+
+    function nextStep() {
+      if (stepIndex >= steps.length) return;
+      const entry = steps[stepIndex];
+      renderStep(stepIndex);
+      renderLog(entry);
+      stepIndex++;
+      if (stepIndex >= steps.length) stopPlay();
+    }
+
+    function prevStep() {
+      if (stepIndex <= 0) return;
+      stepIndex = Math.max(0, stepIndex - 1);
+      document.getElementById('log').innerHTML = '';
+      for (let i = 0; i < stepIndex; i++) {
+        renderLog(steps[i]);
+      }
+      renderStep(stepIndex - 1);
+    }
+
+    function play() {
+      if (playing) return;
+      playing = true;
+      document.getElementById('btnPlay').textContent = '暂停';
+      timer = setInterval(() => nextStep(), 700);
+    }
+
+    function stopPlay() {
+      playing = false;
+      document.getElementById('btnPlay').textContent = '自动播放';
+      if (timer) clearInterval(timer);
+      timer = null;
+    }
+
+    document.getElementById('btnNext').addEventListener('click', nextStep);
+    document.getElementById('btnPrev').addEventListener('click', prevStep);
+    document.getElementById('btnPlay').addEventListener('click', () => {
+      if (playing) stopPlay();
+      else play();
+    });
+    document.getElementById('btnReset').addEventListener('click', () => {
+      stopPlay();
+      resetAll();
+    });
+
+    document.getElementById('modeCombo').addEventListener('click', () => {
+      currentMode = 'combo';
+      document.getElementById('modeCombo').className = 'active-mode';
+      document.getElementById('modePermu').className = 'ghost';
+      stopPlay();
+      buildSteps('combo');
+      resetAll();
+    });
+
+    document.getElementById('modePermu').addEventListener('click', () => {
+      currentMode = 'permu';
+      document.getElementById('modePermu').className = 'active-mode';
+      document.getElementById('modeCombo').className = 'ghost';
+      stopPlay();
+      buildSteps('permu');
+      resetAll();
+    });
+
+    // 键盘事件监听器
+    document.addEventListener('keydown', (e) => {
+      // 如果用户在输入框中，不响应键盘快捷键
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        return;
+      }
+      
+      if (e.key === 'ArrowLeft') {
+        prevStep();
+        e.preventDefault();
+      } else if (e.key === 'ArrowRight') {
+        nextStep();
+        e.preventDefault();
+      } else if (e.key === ' ') {
+        if (playing) stopPlay();
+        else play();
+        e.preventDefault();
+      }
+    });
+
+    buildSteps('combo');
+    resetAll();
+  </script>
+</body>
+</html>

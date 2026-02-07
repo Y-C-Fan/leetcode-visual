@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>不同的子序列 递推可视化</title>
+  <style>
+    :root {
+      --bg: #1a1b26;
+      --panel: #24283b;
+      --card: #292e42;
+      --text: #a9b1d6;
+      --muted: #565f89;
+      --accent: #bb9af7;
+      --accent-2: #7aa2f7;
+      --good: #9ece6a;
+      --warn: #e0af68;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: radial-gradient(circle at 50% 0%, #24283b, var(--bg));
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header {
+      padding: 32px 20px 10px;
+      text-align: center;
+    }
+    header h1 { 
+      margin: 0 0 8px; 
+      font-size: 28px; 
+      background: linear-gradient(to right, var(--accent), var(--accent-2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    header p { margin: 0; color: var(--muted); }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 20px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid #24283b;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    button {
+      background: var(--accent);
+      border: none;
+      color: #1a1b26;
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    button:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    button.secondary { background: var(--accent-2); color: #1a1b26; }
+    button.ghost { background: transparent; color: var(--text); border: 1px solid #414868; }
+    .chip {
+      background: #24283b;
+      border: 1px solid #414868;
+      padding: 6px 10px;
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .row { display: flex; gap: 12px; align-items: center; }
+    .dp-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(45px, 1fr));
+      gap: 4px;
+      margin-top: 12px;
+    }
+    .cell {
+      background: var(--card);
+      padding: 8px 4px;
+      border-radius: 6px;
+      border: 1px solid #2d2d3d;
+      text-align: center;
+      transition: all 0.3s ease;
+      min-height: 35px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .cell .val { font-size: 14px; font-weight: 700; }
+    .cell.active { outline: 2px solid var(--accent); background: #2f334d; }
+    .cell.match { outline: 2px solid var(--good); background: #223733; }
+    .cell.header { background: #1a1b26; font-weight: bold; color: var(--accent-2); }
+    .cell.header .val { font-size: 11px; }
+    .explain {
+      line-height: 1.6;
+      color: var(--text);
+    }
+    .explain h3 { margin-top: 10px; color: var(--accent); }
+    .log {
+      max-height: 240px;
+      overflow: auto;
+      background: #16161e;
+      border-radius: 12px;
+      border: 1px solid #24283b;
+      padding: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12px;
+      color: #a9b1d6;
+    }
+    .log div { padding: 4px 0; border-bottom: 1px solid #1a1b26; }
+    .legend { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 10px; }
+    .legend span { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .dot.active { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+    .dot.match { background: var(--good); box-shadow: 0 0 8px var(--good); }
+    .footer-note { color: var(--muted); font-size: 12px; margin-top: 8px; }
+
+    .formula-display {
+      background: #1a1b26;
+      border: 1px solid #414868;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 16px 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: var(--text);
+    }
+    .formula-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--accent);
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #2d2d3d;
+      letter-spacing: 0.5px;
+    }
+    .formula-content {
+      font-size: 17px;
+      line-height: 1.6;
+    }
+    .formula-content b { color: var(--accent); }
+    .formula-content .highlight { color: var(--good); font-weight: bold; }
+    .formula-content .math { color: var(--warn); }
+
+    .string-display {
+      display: flex;
+      gap: 4px;
+      margin: 12px 0;
+      flex-wrap: wrap;
+    }
+    .char {
+      width: 35px;
+      height: 45px;
+      background: var(--card);
+      border: 2px solid #414868;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: bold;
+      color: var(--text);
+      position: relative;
+      transition: all 0.3s ease;
+    }
+    .char .index {
+      position: absolute;
+      bottom: 2px;
+      font-size: 10px;
+      color: var(--muted);
+    }
+    .char.active { border-color: var(--accent); background: #2f334d; }
+    .char.match { border-color: var(--good); background: #223733; }
+
+    .result-display {
+      background: #223733;
+      border: 2px solid var(--good);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+      margin: 12px 0;
+    }
+    .result-display .label {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .result-display .value {
+      font-size: 32px;
+      font-weight: bold;
+      color: var(--good);
+    }
+
+    @media (max-width: 900px) {
+      .container { grid-template-columns: 1fr; }
+      .dp-grid { grid-template-columns: repeat(4, minmax(45px, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>不同的子序列：递推公式与状态转移可视化</h1>
+    <p>示例：s = "rabbbit", t = "rabbit"</p>
+  </header>
+
+  <div class="container">
+    <section class="panel">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div class="controls">
+          <button id="btnPrev">上一步</button>
+          <button id="btnNext">下一步</button>
+          <button id="btnPlay" class="secondary">自动播放</button>
+          <button id="btnReset" class="ghost">重置</button>
+        </div>
+      </div>
+      
+      <div class="controls" style="margin-bottom: 12px;">
+        <span class="chip" id="stepInfo">Step 0</span>
+        <span class="chip" id="iInfo">i: -</span>
+        <span class="chip" id="jInfo">j: -</span>
+      </div>
+
+      <div class="legend" style="margin-top:10px;">
+        <span><i class="dot active"></i>当前检查</span>
+        <span><i class="dot match"></i>字符匹配</span>
+      </div>
+
+      <div id="formulaBox" class="formula-display">
+        dp[i][j] = dp[i-1][j] + (s[i-1] == t[j-1] ? dp[i-1][j-1] : 0)
+      </div>
+
+      <h3>字符串 s</h3>
+      <div class="string-display" id="sDisplay"></div>
+
+      <h3>字符串 t</h3>
+      <div class="string-display" id="tDisplay"></div>
+
+      <div class="result-display">
+        <div class="label">s 中 t 出现的次数</div>
+        <div class="value" id="result">-</div>
+      </div>
+
+      <h3>DP 表格</h3>
+      <div class="dp-grid" id="dpGrid"></div>
+
+      <h3>操作日志</h3>
+      <div class="log" id="log"></div>
+      <div class="footer-note">公式：dp[i][j] = dp[i-1][j] + (s[i-1] == t[j-1] ? dp[i-1][j-1] : 0)</div>
+    </section>
+
+    <section class="panel explain">
+      <h3>问题定义</h3>
+      <p>
+        给定两个字符串 s 和 t，返回 s 中 t 出现的次数。
+        注意：子序列是指不改变字符的相对顺序，从原字符串中删除一些字符（也可以不删除）后形成的新字符串。
+      </p>
+      
+      <h3>动态规划思路</h3>
+      <p>
+        设 <strong>dp[i][j]</strong> 表示 s 的前 i 个字符中 t 的前 j 个字符出现的次数。
+        我们需要考虑 s[i-1] 是否等于 t[j-1]。
+      </p>
+
+      <h3>递推公式</h3>
+      <p>
+        对于 dp[i][j]：
+      </p>
+      <p style="font-family: monospace; background: #1a1b26; padding: 12px; border-radius: 8px; border: 1px solid #414868;">
+        if s[i-1] == t[j-1]:<br>
+        &nbsp;&nbsp;dp[i][j] = dp[i-1][j] + dp[i-1][j-1]<br>
+        else:<br>
+        &nbsp;&nbsp;dp[i][j] = dp[i-1][j]
+      </p>
+      <p>
+        边界条件：
+        - <strong>dp[i][0] = 1</strong>：空字符串 t 是任何字符串 s 的子序列
+        - <strong>dp[0][j] = 0</strong>（j > 0）：空字符串 s 不能包含非空字符串 t
+      </p>
+
+      <h3>Java 代码实现</h3>
+      <pre class="code-block" style="background: #16161e; border: 1px solid #414868; border-radius: 12px; padding: 16px; margin: 16px 0; font-family: ui-monospace, monospace; font-size: 13px; color: #a9b1d6; overflow-x: auto;">
+<span style="color: var(--accent);">public int</span> <span style="color: var(--good);">numDistinct</span>(String s, String t) {
+    <span style="color: var(--accent-2);">int</span> m = s.<span style="color: var(--good);">length</span>(), n = t.<span style="color: var(--good);">length</span>();
+    <span style="color: var(--accent-2);">int[][]</span> dp = <span style="color: var(--accent);">new int</span>[m + <span style="color: var(--warn);">1</span>][n + <span style="color: var(--warn);">1</span>];
+    
+    <span style="color: var(--muted);">// 初始化第一列：空字符串 t 是任何字符串的子序列</span>
+    <span style="color: var(--accent);">for</span> (<span style="color: var(--accent-2);">int</span> i = <span style="color: var(--warn);">0</span>; i <= m; i++) {
+        dp[i][<span style="color: var(--warn);">0</span>] = <span style="color: var(--warn);">1</span>;
+    }
+    
+    <span style="color: var(--muted);">// 填充 DP 表格</span>
+    <span style="color: var(--accent);">for</span> (<span style="color: var(--accent-2);">int</span> i = <span style="color: var(--warn);">1</span>; i <= m; i++) {
+        <span style="color: var(--accent);">for</span> (<span style="color: var(--accent-2);">int</span> j = <span style="color: var(--warn);">1</span>; j <= n; j++) {
+            <span style="color: var(--accent);">if</span> (s.<span style="color: var(--good);">charAt</span>(i - <span style="color: var(--warn);">1</span>) == t.<span style="color: var(--good);">charAt</span>(j - <span style="color: var(--warn);">1</span>)) {
+                <span style="color: var(--muted);">// 字符匹配：可以选择使用或不使用 s[i-1]</span>
+                dp[i][j] = dp[i - <span style="color: var(--warn);">1</span>][j] + dp[i - <span style="color: var(--warn);">1</span>][j - <span style="color: var(--warn);">1</span>];  <span style="color: var(--muted);">// 递推公式</span>
+            } <span style="color: var(--accent);">else</span> {
+                <span style="color: var(--muted);">// 字符不匹配：只能不使用 s[i-1]</span>
+                dp[i][j] = dp[i - <span style="color: var(--warn);">1</span>][j];
+            }
+        }
+    }
+    <span style="color: var(--accent);">return</span> dp[m][n];
+}</pre>
+
+      <h3>本例分析</h3>
+      <p>
+        s = "rabbbit", t = "rabbit"<br/>
+        s 中 t 出现的次数：<strong>3</strong><br/>
+        三种方式：<br/>
+        1. ra<b>b</b>b<b>b</b>it<br/>
+        2. ra<b>b</b><b>b</b>bit<br/>
+        3. ra<b>bb</b>bit
+      </p>
+    </section>
+  </div>
+
+  <script>
+    const s = "rabbbit";
+    const t = "rabbit";
+
+    const m = s.length;
+    const n = t.length;
+
+    const steps = [];
+    let stepIndex = 0;
+    let playing = false;
+    let timer = null;
+
+    function buildSteps() {
+      steps.length = 0;
+      const temp = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+      let stepCount = 0;
+
+      // 初始化第一列
+      for (let i = 0; i <= m; i++) {
+        temp[i][0] = 1;
+        steps.push({
+          s: stepCount++,
+          i: i,
+          j: 0,
+          dpVal: 1,
+          reason: `dp[${i}][0] = 1 (空字符串 t 是任何字符串的子序列)`,
+          snapshot: temp.map(row => [...row])
+        });
+      }
+
+      // 填充 DP 表格
+      for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+          if (s[i - 1] === t[j - 1]) {
+            temp[i][j] = temp[i - 1][j] + temp[i - 1][j - 1];
+          } else {
+            temp[i][j] = temp[i - 1][j];
+          }
+
+          const match = s[i - 1] === t[j - 1];
+          let reason = `dp[${i}][${j}] = `;
+          if (match) {
+            reason += `dp[${i-1}][${j}] + dp[${i-1}][${j-1}] = ${temp[i-1][j]} + ${temp[i-1][j-1]} = ${temp[i][j]}`;
+          } else {
+            reason += `dp[${i-1}][${j}] = ${temp[i-1][j]} (s[${i-1}](${s[i-1]}) != t[${j-1}](${t[j-1]}))`;
+          }
+
+          steps.push({
+            s: stepCount++,
+            i: i,
+            j: j,
+            dpVal: temp[i][j],
+            match: match,
+            reason: reason,
+            snapshot: temp.map(row => [...row])
+          });
+        }
+      }
+    }
+
+    function renderStringDisplay(containerId, str, activeIndex) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = '';
+      
+      for (let i = 0; i < str.length; i++) {
+        const char = document.createElement('div');
+        char.className = 'char';
+        char.textContent = str[i];
+        char.innerHTML = `${str[i]}<div class="index">[${i}]</div>`;
+        
+        if (activeIndex !== null && i < activeIndex) {
+          char.classList.add('match');
+        }
+        
+        container.appendChild(char);
+      }
+    }
+
+    function renderGrid(snapshot, activeIndex) {
+      const grid = document.getElementById('dpGrid');
+      grid.innerHTML = '';
+      
+      // Header row
+      const emptyCell = document.createElement('div');
+      emptyCell.className = 'cell header';
+      emptyCell.innerHTML = '<div class="val">i\\j</div>';
+      grid.appendChild(emptyCell);
+      
+      for (let j = 0; j <= n; j++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell header';
+        cell.innerHTML = `<div class="val">${j}</div>`;
+        grid.appendChild(cell);
+      }
+      
+      // Data rows
+      for (let i = 0; i <= m; i++) {
+        const headerCell = document.createElement('div');
+        headerCell.className = 'cell header';
+        headerCell.innerHTML = `<div class="val">${i}</div>`;
+        grid.appendChild(headerCell);
+        
+        for (let j = 0; j <= n; j++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          if (activeIndex && activeIndex.i === i && activeIndex.j === j) {
+            cell.classList.add('active');
+          }
+          
+          cell.innerHTML = `<div class="val">${snapshot[i][j]}</div>`;
+          grid.appendChild(cell);
+        }
+      }
+    }
+
+    function renderLog(entry) {
+      const log = document.getElementById('log');
+      if (!entry) return;
+      const line = document.createElement('div');
+      
+      line.textContent = entry.reason;
+      if (entry.match) line.style.color = 'var(--good)';
+      log.appendChild(line);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function renderStep(idx) {
+      const info = document.getElementById('stepInfo');
+      const iInfo = document.getElementById('iInfo');
+      const jInfo = document.getElementById('jInfo');
+      const resultEl = document.getElementById('result');
+      const formulaBox = document.getElementById('formulaBox');
+
+      if (idx < 0) idx = 0;
+      if (idx >= steps.length) idx = steps.length - 1;
+
+      const entry = steps[idx];
+      info.textContent = `Step ${idx + 1} / ${steps.length}`;
+      iInfo.textContent = `i: ${entry.i}`;
+      jInfo.textContent = `j: ${entry.j}`;
+      
+      if (entry.i === m && entry.j === n) {
+        resultEl.textContent = entry.dpVal;
+      }
+
+      renderStringDisplay('sDisplay', s, entry.i);
+      renderStringDisplay('tDisplay', t, entry.j);
+
+      if (entry.j === 0) {
+        formulaBox.innerHTML = `
+          <div class="formula-title">初始化第一列</div>
+          <div class="formula-content">
+            dp[${entry.i}][0] = <span class="highlight">1</span> (空字符串 t 是任何字符串的子序列)
+          </div>
+        `;
+      } else {
+        const match = s[entry.i - 1] === t[entry.j - 1];
+        formulaBox.innerHTML = `
+          <div class="formula-title">递推公式: dp[i][j] = dp[i-1][j] + (s[i-1] == t[j-1] ? dp[i-1][j-1] : 0)</div>
+          <div class="formula-content">
+            s[${entry.i-1}](${s[entry.i-1]}) ${match ? '==' : '!='} t[${entry.j-1}](${t[entry.j-1]})<br>
+            ${match 
+              ? `dp[${entry.i}][${entry.j}] = dp[${entry.i-1}][${entry.j}] + dp[${entry.i-1}][${entry.j-1}]<br>= ${entry.snapshot[entry.i-1][entry.j]} + ${entry.snapshot[entry.i-1][entry.j-1]}<br>= <b style="color: var(--good);">${entry.dpVal}</b>`
+              : `dp[${entry.i}][${entry.j}] = dp[${entry.i-1}][${entry.j}]<br>= ${entry.snapshot[entry.i-1][entry.j]}<br>= <b style="color: var(--text);">${entry.dpVal}</b>`
+            }
+          </div>
+        `;
+      }
+
+      renderGrid(entry.snapshot, { i: entry.i, j: entry.j });
+    }
+
+    function resetAll() {
+      stepIndex = 0;
+      document.getElementById('log').innerHTML = '';
+      renderStringDisplay('sDisplay', s, 0);
+      renderStringDisplay('tDisplay', t, 0);
+      document.getElementById('dpGrid').innerHTML = '';
+      document.getElementById('result').textContent = '-';
+      document.getElementById('stepInfo').textContent = 'Step 0';
+      document.getElementById('iInfo').textContent = 'i: -';
+      document.getElementById('jInfo').textContent = 'j: -';
+      document.getElementById('formulaBox').innerHTML = `
+        <div class="formula-title">递推公式</div>
+        <div class="formula-content">等待开始...</div>
+      `;
+    }
+
+    function nextStep() {
+      if (stepIndex >= steps.length) return;
+      const entry = steps[stepIndex];
+      renderStep(stepIndex);
+      renderLog(entry);
+      stepIndex++;
+      if (stepIndex >= steps.length) stopPlay();
+    }
+
+    function prevStep() {
+      if (stepIndex <= 0) return;
+      stepIndex = Math.max(0, stepIndex - 1);
+      document.getElementById('log').innerHTML = '';
+      for (let i = 0; i < stepIndex; i++) {
+        renderLog(steps[i]);
+      }
+      renderStep(stepIndex - 1);
+    }
+
+    function play() {
+      if (playing) return;
+      playing = true;
+      document.getElementById('btnPlay').textContent = '暂停';
+      timer = setInterval(() => nextStep(), 500);
+    }
+
+    function stopPlay() {
+      playing = false;
+      document.getElementById('btnPlay').textContent = '自动播放';
+      if (timer) clearInterval(timer);
+      timer = null;
+    }
+
+    document.getElementById('btnNext').addEventListener('click', nextStep);
+    document.getElementById('btnPrev').addEventListener('click', prevStep);
+    document.getElementById('btnPlay').addEventListener('click', () => {
+      if (playing) stopPlay();
+      else play();
+    });
+    document.getElementById('btnReset').addEventListener('click', () => {
+      stopPlay();
+      resetAll();
+    });
+
+    // 键盘事件监听器
+    document.addEventListener('keydown', (e) => {
+      // 如果用户在输入框中，不响应键盘快捷键
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        return;
+      }
+      
+      if (e.key === 'ArrowLeft') {
+        prevStep();
+        e.preventDefault();
+      } else if (e.key === 'ArrowRight') {
+        nextStep();
+        e.preventDefault();
+      } else if (e.key === ' ') {
+        if (playing) stopPlay();
+        else play();
+        e.preventDefault();
+      }
+    });
+
+    buildSteps();
+    resetAll();
+  </script>
+</body>
+</html>
