@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>438. 找到字符串中所有字母异位词 - 滑动窗口可视化</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #00d9ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 30px;
+        }
+
+        .input-section {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            align-items: flex-end;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .input-group label {
+            color: #00d9ff;
+            font-size: 0.9rem;
+        }
+
+        .input-group input {
+            padding: 10px 15px;
+            border: 2px solid #333;
+            border-radius: 8px;
+            background: #0f0f1a;
+            color: #fff;
+            font-size: 1rem;
+            width: 300px;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #00d9ff;
+        }
+
+        .btn {
+            padding: 10px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, #00d9ff, #00ff88);
+            color: #1a1a2e;
+            font-weight: bold;
+        }
+
+        .btn-start:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 217, 255, 0.4);
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        .btn-control {
+            background: #2a2a4a;
+            color: #fff;
+            border: 2px solid #444;
+        }
+
+        .btn-control:hover:not(:disabled) {
+            background: #3a3a5a;
+            border-color: #00d9ff;
+        }
+
+        .btn-control:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .visualization-area {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .string-display {
+            margin-bottom: 30px;
+        }
+
+        .string-label {
+            font-size: 1.1rem;
+            color: #00d9ff;
+            margin-bottom: 10px;
+        }
+
+        .chars-container {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+
+        .char-box {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            font-weight: bold;
+            border-radius: 8px;
+            background: #2a2a4a;
+            border: 2px solid #444;
+            position: relative;
+            transition: all 0.3s;
+        }
+
+        .char-box.in-window {
+            background: linear-gradient(135deg, #ff6b6b, #feca57);
+            border-color: #ff6b6b;
+            transform: scale(1.05);
+        }
+
+        .char-box.entering {
+            background: linear-gradient(135deg, #00ff88, #00d9ff);
+            border-color: #00ff88;
+        }
+
+        .char-box.leaving {
+            background: linear-gradient(135deg, #a55eea, #8854d0);
+            border-color: #a55eea;
+        }
+
+        .char-box.match {
+            background: linear-gradient(135deg, #00ff88, #00d9ff);
+            border-color: #00ff88;
+            animation: pulse 0.5s ease-in-out;
+        }
+
+        .char-index {
+            position: absolute;
+            top: -20px;
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1.05); }
+            50% { transform: scale(1.15); }
+        }
+
+        .pattern-display {
+            margin-bottom: 30px;
+        }
+
+        .pattern-chars {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .pattern-char {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 6px;
+            background: #3a3a5a;
+            border: 2px solid #00d9ff;
+            color: #00d9ff;
+        }
+
+        .counters-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .counter-panel {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .counter-title {
+            font-size: 1rem;
+            color: #00d9ff;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .counter-grid {
+            display: grid;
+            grid-template-columns: repeat(13, 1fr);
+            gap: 5px;
+        }
+
+        .counter-item {
+            text-align: center;
+        }
+
+        .counter-letter {
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        .counter-value {
+            font-size: 1rem;
+            font-weight: bold;
+            padding: 5px;
+            border-radius: 4px;
+            background: #2a2a4a;
+            margin-top: 3px;
+            transition: all 0.3s;
+        }
+
+        .counter-value.changed {
+            background: #ff6b6b;
+            color: #fff;
+        }
+
+        .counter-value.matched {
+            background: #00ff88;
+            color: #1a1a2e;
+        }
+
+        .results-section {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .results-title {
+            font-size: 1rem;
+            color: #00ff88;
+            margin-bottom: 15px;
+        }
+
+        .results-list {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .result-item {
+            padding: 8px 15px;
+            background: linear-gradient(135deg, #00ff88, #00d9ff);
+            color: #1a1a2e;
+            border-radius: 6px;
+            font-weight: bold;
+        }
+
+        .step-info {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .step-title {
+            font-size: 1.1rem;
+            color: #feca57;
+            margin-bottom: 10px;
+        }
+
+        .step-description {
+            color: #ccc;
+            line-height: 1.6;
+        }
+
+        .highlight {
+            color: #00d9ff;
+            font-weight: bold;
+        }
+
+        .highlight-green {
+            color: #00ff88;
+            font-weight: bold;
+        }
+
+        .highlight-red {
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+
+        .window-indicator {
+            display: flex;
+            justify-content: center;
+            margin-top: 10px;
+            color: #888;
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #888;
+        }
+
+        .speed-control input {
+            width: 100px;
+        }
+
+        @media (max-width: 768px) {
+            .counters-section {
+                grid-template-columns: 1fr;
+            }
+
+            .counter-grid {
+                grid-template-columns: repeat(7, 1fr);
+            }
+
+            .input-group input {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>438. 找到字符串中所有字母异位词</h1>
+        <p class="subtitle">滑动窗口算法可视化 - 滑动窗口 + 计数数组</p>
+
+        <div class="input-section">
+            <div class="input-group">
+                <label>字符串 s:</label>
+                <input type="text" id="stringS" value="cbaebabacd" placeholder="输入字符串 s">
+            </div>
+            <div class="input-group">
+                <label>模式串 p:</label>
+                <input type="text" id="stringP" value="abc" placeholder="输入模式串 p">
+            </div>
+            <button class="btn btn-start" id="startBtn">开始演示</button>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-control" id="prevBtn" disabled>上一步</button>
+            <button class="btn btn-control" id="nextBtn" disabled>下一步</button>
+            <button class="btn btn-control" id="autoBtn" disabled>自动播放</button>
+            <div class="speed-control">
+                <span>速度:</span>
+                <input type="range" id="speedSlider" min="200" max="2000" value="800">
+            </div>
+            <button class="btn btn-control" id="resetBtn">重置</button>
+        </div>
+
+        <div class="visualization-area">
+            <div class="step-info" id="stepInfo">
+                <div class="step-title">等待开始...</div>
+                <div class="step-description">点击"开始演示"按钮开始可视化算法过程</div>
+            </div>
+
+            <div class="string-display">
+                <div class="string-label">字符串 s（窗口位置）:</div>
+                <div class="chars-container" id="stringDisplay"></div>
+                <div class="window-indicator" id="windowIndicator"></div>
+            </div>
+
+            <div class="pattern-display">
+                <div class="string-label">模式串 p:</div>
+                <div class="pattern-chars" id="patternDisplay"></div>
+            </div>
+
+            <div class="counters-section">
+                <div class="counter-panel">
+                    <div class="counter-title">模式串计数 pCount</div>
+                    <div class="counter-grid" id="pCountDisplay"></div>
+                </div>
+                <div class="counter-panel">
+                    <div class="counter-title">窗口计数 sCount（当前变化高亮）</div>
+                    <div class="counter-grid" id="sCountDisplay"></div>
+                </div>
+            </div>
+
+            <div class="results-section">
+                <div class="results-title">找到的异位词起始索引:</div>
+                <div class="results-list" id="resultsList">
+                    <span style="color: #888;">暂无结果</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class AnagramVisualizer {
+            constructor() {
+                this.s = '';
+                this.p = '';
+                this.steps = [];
+                this.currentStep = -1;
+                this.isPlaying = false;
+                this.playInterval = null;
+
+                this.initElements();
+                this.initEventListeners();
+            }
+
+            initElements() {
+                this.stringSInput = document.getElementById('stringS');
+                this.stringPInput = document.getElementById('stringP');
+                this.startBtn = document.getElementById('startBtn');
+                this.prevBtn = document.getElementById('prevBtn');
+                this.nextBtn = document.getElementById('nextBtn');
+                this.autoBtn = document.getElementById('autoBtn');
+                this.resetBtn = document.getElementById('resetBtn');
+                this.speedSlider = document.getElementById('speedSlider');
+                this.stringDisplay = document.getElementById('stringDisplay');
+                this.patternDisplay = document.getElementById('patternDisplay');
+                this.pCountDisplay = document.getElementById('pCountDisplay');
+                this.sCountDisplay = document.getElementById('sCountDisplay');
+                this.resultsList = document.getElementById('resultsList');
+                this.stepInfo = document.getElementById('stepInfo');
+                this.windowIndicator = document.getElementById('windowIndicator');
+            }
+
+            initEventListeners() {
+                this.startBtn.addEventListener('click', () => this.start());
+                this.prevBtn.addEventListener('click', () => this.prevStep());
+                this.nextBtn.addEventListener('click', () => this.nextStep());
+                this.autoBtn.addEventListener('click', () => this.toggleAutoPlay());
+                this.resetBtn.addEventListener('click', () => this.reset());
+            }
+
+            start() {
+                this.s = this.stringSInput.value;
+                this.p = this.stringPInput.value;
+
+                if (!this.s || !this.p) {
+                    alert('请输入字符串 s 和模式串 p');
+                    return;
+                }
+
+                if (this.s.length < this.p.length) {
+                    alert('字符串 s 的长度必须大于等于模式串 p 的长度');
+                    return;
+                }
+
+                this.generateSteps();
+                this.currentStep = 0;
+                this.render();
+
+                this.startBtn.disabled = true;
+                this.prevBtn.disabled = false;
+                this.nextBtn.disabled = false;
+                this.autoBtn.disabled = false;
+            }
+
+            generateSteps() {
+                this.steps = [];
+                const sL = this.s.length;
+                const pL = this.p.length;
+                const pCount = new Array(26).fill(0);
+                const sCount = new Array(26).fill(0);
+                const results = [];
+
+                // Step 0: 初始化
+                this.steps.push({
+                    type: 'init',
+                    description: `初始化：字符串 s = "${this.s}"，模式串 p = "${this.p}"<br>
+                        s 长度 = ${sL}，p 长度 = ${pL}<br>
+                        创建两个长度为 26 的计数数组 pCount 和 sCount`,
+                    pCount: [...pCount],
+                    sCount: [...sCount],
+                    results: [],
+                    windowStart: -1,
+                    windowEnd: -1,
+                    changedIndex: -1
+                });
+
+                // Step 1: 统计模式串 p 的字符频率
+                for (let i = 0; i < pL; i++) {
+                    const idx = this.p.charCodeAt(i) - 97;
+                    pCount[idx]++;
+                }
+
+                this.steps.push({
+                    type: 'pattern_count',
+                    description: `统计模式串 p 的字符频率<br>
+                        遍历模式串 p，统计每个字符出现的次数<br>
+                        pCount 已填充完成`,
+                    pCount: [...pCount],
+                    sCount: [...sCount],
+                    results: [],
+                    windowStart: -1,
+                    windowEnd: -1,
+                    changedIndex: -1
+                });
+
+                // Step 2: 初始化窗口（前 pL 个字符）
+                for (let i = 0; i < pL; i++) {
+                    const idx = this.s.charCodeAt(i) - 97;
+                    sCount[idx]++;
+                }
+
+                this.steps.push({
+                    type: 'init_window',
+                    description: `初始化滑动窗口<br>
+                        将窗口放置在起始位置 [0, ${pL - 1}]<br>
+                        统计窗口内字符：s[0..${pL - 1}] = "${this.s.substring(0, pL)}"`,
+                    pCount: [...pCount],
+                    sCount: [...sCount],
+                    results: [],
+                    windowStart: 0,
+                    windowEnd: pL - 1,
+                    changedIndex: -1
+                });
+
+                // Step 3: 检查初始窗口
+                const initialMatch = this.arraysEqual(pCount, sCount);
+                if (initialMatch) {
+                    results.push(0);
+                }
+
+                this.steps.push({
+                    type: 'check_init',
+                    description: `检查初始窗口是否为异位词<br>
+                        比较 pCount 和 sCount ${initialMatch ? '<span class="highlight-green">相等 ✓</span>' : '<span class="highlight-red">不相等 ✗</span>'}<br>
+                        ${initialMatch ? '找到异位词！起始索引为 <span class="highlight-green">0</span>' : '初始窗口不是异位词'}`,
+                    pCount: [...pCount],
+                    sCount: [...sCount],
+                    results: [...results],
+                    windowStart: 0,
+                    windowEnd: pL - 1,
+                    changedIndex: -1,
+                    isMatch: initialMatch
+                });
+
+                // Step 4+: 滑动窗口
+                for (let i = pL; i < sL; i++) {
+                    const addIdx = this.s.charCodeAt(i) - 97;
+                    const removeIdx = this.s.charCodeAt(i - pL) - 97;
+
+                    // 滑动前状态
+                    const beforeSlide = {
+                        type: 'before_slide',
+                        description: `准备滑动窗口<br>
+                            当前窗口位置：[${i - pL}, ${i - 1}]<br>
+                            下一步：添加 s[${i}] = '${this.s[i]}'，移除 s[${i - pL}] = '${this.s[i - pL]}'`,
+                        pCount: [...pCount],
+                        sCount: [...sCount],
+                        results: [...results],
+                        windowStart: i - pL,
+                        windowEnd: i - 1,
+                        changedIndex: -1
+                    };
+                    this.steps.push(beforeSlide);
+
+                    // 添加新字符
+                    sCount[addIdx]++;
+
+                    const afterAdd = {
+                        type: 'add_char',
+                        description: `添加新字符<br>
+                            窗口右边界扩展到索引 ${i}<br>
+                            s[${i}] = '<span class="highlight-green">${this.s[i]}</span>' 进入窗口<br>
+                            sCount['${this.s[i]}']++ → ${sCount[addIdx]}`,
+                        pCount: [...pCount],
+                        sCount: [...sCount],
+                        results: [...results],
+                        windowStart: i - pL,
+                        windowEnd: i,
+                        changedIndex: addIdx,
+                        enteringChar: i
+                    };
+                    this.steps.push(afterAdd);
+
+                    // 移除旧字符
+                    sCount[removeIdx]--;
+
+                    const afterRemove = {
+                        type: 'remove_char',
+                        description: `移除旧字符<br>
+                            窗口左边界移动到索引 ${i - pL + 1}<br>
+                            s[${i - pL}] = '<span class="highlight-red">${this.s[i - pL]}</span>' 离开窗口<br>
+                            sCount['${this.s[i - pL]}']-- → ${sCount[removeIdx]}`,
+                        pCount: [...pCount],
+                        sCount: [...sCount],
+                        results: [...results],
+                        windowStart: i - pL + 1,
+                        windowEnd: i,
+                        changedIndex: removeIdx,
+                        leavingChar: i - pL
+                    };
+                    this.steps.push(afterRemove);
+
+                    // 检查是否匹配
+                    const isMatch = this.arraysEqual(pCount, sCount);
+                    if (isMatch) {
+                        results.push(i - pL + 1);
+                    }
+
+                    this.steps.push({
+                        type: 'check_match',
+                        description: `检查当前窗口是否为异位词<br>
+                            比较 pCount 和 sCount ${isMatch ? '<span class="highlight-green">相等 ✓</span>' : '<span class="highlight-red">不相等 ✗</span>'}<br>
+                            ${isMatch ? `找到异位词！起始索引为 <span class="highlight-green">${i - pL + 1}</span>` : '当前窗口不是异位词'}`,
+                        pCount: [...pCount],
+                        sCount: [...sCount],
+                        results: [...results],
+                        windowStart: i - pL + 1,
+                        windowEnd: i,
+                        changedIndex: -1,
+                        isMatch: isMatch
+                    });
+                }
+
+                // 最终结果
+                this.steps.push({
+                    type: 'final',
+                    description: `算法完成！<br>
+                        共找到 <span class="highlight-green">${results.length}</span> 个异位词<br>
+                        起始索引分别为：[${results.join(', ')}]`,
+                    pCount: [...pCount],
+                    sCount: [...sCount],
+                    results: [...results],
+                    windowStart: -1,
+                    windowEnd: -1,
+                    changedIndex: -1
+                });
+            }
+
+            arraysEqual(a, b) {
+                for (let i = 0; i < a.length; i++) {
+                    if (a[i] !== b[i]) return false;
+                }
+                return true;
+            }
+
+            render() {
+                const step = this.steps[this.currentStep];
+                
+                // 更新步骤信息
+                this.stepInfo.innerHTML = `
+                    <div class="step-title">步骤 ${this.currentStep + 1} / ${this.steps.length}</div>
+                    <div class="step-description">${step.description}</div>
+                `;
+
+                // 渲染字符串 s
+                this.renderString(step);
+
+                // 渲染模式串 p
+                this.renderPattern();
+
+                // 渲染计数数组
+                this.renderCounters(step);
+
+                // 渲染结果
+                this.renderResults(step);
+
+                // 更新按钮状态
+                this.prevBtn.disabled = this.currentStep === 0;
+                this.nextBtn.disabled = this.currentStep === this.steps.length - 1;
+            }
+
+            renderString(step) {
+                let html = '';
+                for (let i = 0; i < this.s.length; i++) {
+                    let className = 'char-box';
+                    
+                    if (i >= step.windowStart && i <= step.windowEnd && step.windowStart >= 0) {
+                        className += ' in-window';
+                    }
+                    
+                    if (step.enteringChar === i) {
+                        className += ' entering';
+                    }
+                    
+                    if (step.leavingChar === i) {
+                        className += ' leaving';
+                    }
+                    
+                    if (step.isMatch && i >= step.windowStart && i <= step.windowEnd) {
+                        className += ' match';
+                    }
+
+                    html += `<div class="${className}">
+                        <span class="char-index">${i}</span>
+                        ${this.s[i]}
+                    </div>`;
+                }
+                this.stringDisplay.innerHTML = html;
+
+                if (step.windowStart >= 0) {
+                    this.windowIndicator.textContent = `窗口范围: [${step.windowStart}, ${step.windowEnd}]`;
+                } else {
+                    this.windowIndicator.textContent = '';
+                }
+            }
+
+            renderPattern() {
+                let html = '';
+                for (let i = 0; i < this.p.length; i++) {
+                    html += `<div class="pattern-char">${this.p[i]}</div>`;
+                }
+                this.patternDisplay.innerHTML = html;
+            }
+
+            renderCounters(step) {
+                const letters = 'abcdefghijklmnopqrstuvwxyz'.split('');
+                
+                // pCount
+                let pHtml = '';
+                for (let i = 0; i < 26; i++) {
+                    const value = step.pCount[i];
+                    pHtml += `
+                        <div class="counter-item">
+                            <div class="counter-letter">${letters[i]}</div>
+                            <div class="counter-value ${value > 0 ? 'matched' : ''}">${value}</div>
+                        </div>
+                    `;
+                }
+                this.pCountDisplay.innerHTML = pHtml;
+
+                // sCount
+                let sHtml = '';
+                for (let i = 0; i < 26; i++) {
+                    const value = step.sCount[i];
+                    let className = 'counter-value';
+                    if (i === step.changedIndex) {
+                        className += ' changed';
+                    } else if (step.pCount[i] === value && value > 0) {
+                        className += ' matched';
+                    }
+                    sHtml += `
+                        <div class="counter-item">
+                            <div class="counter-letter">${letters[i]}</div>
+                            <div class="${className}">${value}</div>
+                        </div>
+                    `;
+                }
+                this.sCountDisplay.innerHTML = sHtml;
+            }
+
+            renderResults(step) {
+                if (step.results.length === 0) {
+                    this.resultsList.innerHTML = '<span style="color: #888;">暂无结果</span>';
+                } else {
+                    this.resultsList.innerHTML = step.results
+                        .map(r => `<div class="result-item">${r}</div>`)
+                        .join('');
+                }
+            }
+
+            prevStep() {
+                if (this.currentStep > 0) {
+                    this.currentStep--;
+                    this.render();
+                }
+            }
+
+            nextStep() {
+                if (this.currentStep < this.steps.length - 1) {
+                    this.currentStep++;
+                    this.render();
+                }
+            }
+
+            toggleAutoPlay() {
+                if (this.isPlaying) {
+                    this.stopAutoPlay();
+                } else {
+                    this.startAutoPlay();
+                }
+            }
+
+            startAutoPlay() {
+                this.isPlaying = true;
+                this.autoBtn.textContent = '暂停';
+                const speed = parseInt(this.speedSlider.value);
+                
+                this.playInterval = setInterval(() => {
+                    if (this.currentStep < this.steps.length - 1) {
+                        this.nextStep();
+                    } else {
+                        this.stopAutoPlay();
+                    }
+                }, speed);
+            }
+
+            stopAutoPlay() {
+                this.isPlaying = false;
+                this.autoBtn.textContent = '自动播放';
+                if (this.playInterval) {
+                    clearInterval(this.playInterval);
+                    this.playInterval = null;
+                }
+            }
+
+            reset() {
+                this.stopAutoPlay();
+                this.currentStep = -1;
+                this.steps = [];
+                
+                this.stringDisplay.innerHTML = '';
+                this.patternDisplay.innerHTML = '';
+                this.pCountDisplay.innerHTML = '';
+                this.sCountDisplay.innerHTML = '';
+                this.resultsList.innerHTML = '<span style="color: #888;">暂无结果</span>';
+                this.windowIndicator.textContent = '';
+                
+                this.stepInfo.innerHTML = `
+                    <div class="step-title">等待开始...</div>
+                    <div class="step-description">点击"开始演示"按钮开始可视化算法过程</div>
+                `;
+
+                this.startBtn.disabled = false;
+                this.prevBtn.disabled = true;
+                this.nextBtn.disabled = true;
+                this.autoBtn.disabled = true;
+            }
+        }
+
+        const visualizer = new AnagramVisualizer();
+    </script>
+</body>
+</html>

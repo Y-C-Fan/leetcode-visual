@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三数之和 - 双指针解法可视化</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #fff;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 30px;
+        }
+        .section {
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .section-title {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: #00d2ff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 25px;
+            background: linear-gradient(180deg, #00d2ff, #3a7bd5);
+            border-radius: 2px;
+        }
+        
+        /* 流程图样式 */
+        .flowchart {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            padding: 20px;
+        }
+        .flow-node {
+            padding: 15px 25px;
+            border-radius: 10px;
+            text-align: center;
+            min-width: 200px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .flow-node:hover {
+            transform: scale(1.05);
+        }
+        .flow-start {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            border-radius: 50px;
+        }
+        .flow-end {
+            background: linear-gradient(135deg, #eb3349, #f45c43);
+            border-radius: 50px;
+        }
+        .flow-process {
+            background: linear-gradient(135deg, #3a7bd5, #00d2ff);
+        }
+        .flow-decision {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            transform: rotate(0deg);
+            clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+            padding: 30px 40px;
+        }
+        .flow-arrow {
+            width: 3px;
+            height: 30px;
+            background: linear-gradient(180deg, #00d2ff, #3a7bd5);
+            position: relative;
+        }
+        .flow-arrow::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 10px solid #3a7bd5;
+        }
+        .flow-label {
+            font-size: 0.8em;
+            padding: 3px 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+            margin: 0 10px;
+        }
+        
+        /* 数组可视化 */
+        .array-viz {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        .array-cell {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1.1em;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        .cell-normal {
+            background: rgba(255,255,255,0.1);
+            border: 2px solid rgba(255,255,255,0.2);
+        }
+        .cell-fixed {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            border: 2px solid #38ef7d;
+        }
+        .cell-left {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: 2px solid #764ba2;
+        }
+        .cell-right {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            border: 2px solid #f5576c;
+        }
+        .cell-found {
+            background: linear-gradient(135deg, #f7971e, #ffd200);
+            border: 2px solid #ffd200;
+        }
+        .pointer-label {
+            position: absolute;
+            bottom: -25px;
+            font-size: 0.8em;
+            white-space: nowrap;
+        }
+        .pointer-fixed { color: #38ef7d; }
+        .pointer-left { color: #764ba2; }
+        .pointer-right { color: #f5576c; }
+        
+        /* 代码块 */
+        .code-block {
+            background: #0d1117;
+            border-radius: 10px;
+            padding: 20px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .code-block pre {
+            margin: 0;
+        }
+        .keyword { color: #ff7b72; }
+        .type { color: #79c0ff; }
+        .string { color: #a5d6ff; }
+        .number { color: #79c0ff; }
+        .comment { color: #8b949e; }
+        .function { color: #d2a8ff; }
+        .variable { color: #ffa657; }
+        .operator { color: #ff7b72; }
+        
+        /* 动画演示区 */
+        .demo-area {
+            background: rgba(0,0,0,0.3);
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 20px;
+        }
+        .demo-controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #00d2ff, #3a7bd5);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0,210,255,0.4);
+        }
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        .step-info {
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            text-align: center;
+        }
+        .step-info h4 {
+            color: #00d2ff;
+            margin-bottom: 10px;
+        }
+        
+        /* 思路说明 */
+        .idea-list {
+            list-style: none;
+            padding: 0;
+        }
+        .idea-list li {
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            border-left: 4px solid #00d2ff;
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+        }
+        .idea-number {
+            width: 30px;
+            height: 30px;
+            background: linear-gradient(135deg, #00d2ff, #3a7bd5);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        .idea-content {
+            flex: 1;
+        }
+        .idea-content strong {
+            color: #00d2ff;
+        }
+        
+        /* 复杂度分析 */
+        .complexity-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 15px;
+        }
+        .complexity-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+        .complexity-card h4 {
+            color: #888;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+        .complexity-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        /* 两列布局 */
+        .two-cols {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+        }
+        @media (max-width: 900px) {
+            .two-cols {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        /* 指针移动示意 */
+        .pointer-movement {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin: 20px 0;
+            font-size: 0.9em;
+        }
+        .movement-case {
+            background: rgba(255,255,255,0.05);
+            padding: 15px 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .movement-case .condition {
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .movement-case .action {
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 三数之和 (3Sum)</h1>
+        <p class="subtitle">LeetCode 15 | 双指针解法可视化讲解</p>
+        
+        <!-- 题目描述 -->
+        <div class="section">
+            <h2 class="section-title">题目描述</h2>
+            <p>给你一个整数数组 <code>nums</code>，判断是否存在三元组 <code>[nums[i], nums[j], nums[k]]</code> 满足 <code>i != j</code>、<code>i != k</code> 且 <code>j != k</code>，同时还满足 <code>nums[i] + nums[j] + nums[k] == 0</code>。</p>
+            <p style="margin-top: 10px;">请你返回所有不重复的三元组。</p>
+        </div>
+        
+        <!-- 核心思路 -->
+        <div class="section">
+            <h2 class="section-title">核心思路</h2>
+            <ul class="idea-list">
+                <li>
+                    <span class="idea-number">1</span>
+                    <div class="idea-content">
+                        <strong>排序数组</strong><br>
+                        首先对数组进行排序，这是双指针法的前提。排序后可以方便去重和利用单调性移动指针。
+                    </div>
+                </li>
+                <li>
+                    <span class="idea-number">2</span>
+                    <div class="idea-content">
+                        <strong>固定一个数，双指针找另外两个</strong><br>
+                        遍历数组，固定第一个数 <code>nums[i]</code>，然后用左右指针 <code>left</code> 和 <code>right</code> 在后面的区间寻找两数之和等于 <code>-nums[i]</code>。
+                    </div>
+                </li>
+                <li>
+                    <span class="idea-number">3</span>
+                    <div class="idea-content">
+                        <strong>根据三数之和移动指针</strong><br>
+                        如果和 <code>&gt; 0</code>，右指针左移；如果和 <code>&lt; 0</code>，左指针右移；如果 <code>== 0</code>，找到一个答案。
+                    </div>
+                </li>
+                <li>
+                    <span class="idea-number">4</span>
+                    <div class="idea-content">
+                        <strong>去重处理</strong><br>
+                        找到答案后，跳过重复的元素，避免重复的三元组。
+                    </div>
+                </li>
+            </ul>
+        </div>
+        
+        <!-- 算法流程图 -->
+        <div class="section">
+            <h2 class="section-title">算法流程图</h2>
+            <div class="flowchart">
+                <div class="flow-node flow-start">开始</div>
+                <div class="flow-arrow"></div>
+                <div class="flow-node flow-process">对数组 nums 进行排序</div>
+                <div class="flow-arrow"></div>
+                <div class="flow-node flow-decision" style="clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);">
+                    i 遍历 [0, n-3]
+                </div>
+                <div class="flow-arrow"></div>
+                <div class="flow-node flow-decision" style="clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);">
+                    nums[i] == nums[i-1]?
+                </div>
+                <div class="flow-label" style="margin-left: 150px; margin-top: -25px;">是 → 跳过(去重)</div>
+                <div class="flow-arrow"></div>
+                <div class="flow-node flow-process">left = i + 1, right = n - 1</div>
+                <div class="flow-arrow"></div>
+                <div class="flow-node flow-decision" style="clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);">
+                    left &lt; right?
+                </div>
+                <div class="flow-arrow"></div>
+                <div class="flow-node flow-process">计算 sum = nums[i] + nums[left] + nums[right]</div>
+                <div class="flow-arrow"></div>
+                <div class="flow-node flow-decision" style="clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);">
+                    sum ?= 0
+                </div>
+                
+                <!-- 分支展示 -->
+                <div style="display: flex; gap: 30px; margin-top: 10px;">
+                    <div style="text-align: center;">
+                        <div class="flow-label">&lt; 0</div>
+                        <div class="flow-node flow-process" style="margin-top: 10px;">left++</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div class="flow-label">= 0</div>
+                        <div class="flow-node flow-process" style="margin-top: 10px; background: linear-gradient(135deg, #11998e, #38ef7d);">记录答案<br>跳过重复元素</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div class="flow-label">&gt; 0</div>
+                        <div class="flow-node flow-process" style="margin-top: 10px;">right--</div>
+                    </div>
+                </div>
+                
+                <div class="flow-arrow" style="margin-top: 20px;"></div>
+                <div class="flow-node flow-end">返回结果列表</div>
+            </div>
+        </div>
+        
+        <!-- 双指针移动示意图 -->
+        <div class="section">
+            <h2 class="section-title">双指针移动示意</h2>
+            <div class="pointer-movement">
+                <div class="movement-case">
+                    <div class="condition" style="color: #f5576c;">sum &gt; 0</div>
+                    <div class="action">right-- (减小总和)</div>
+                </div>
+                <div class="movement-case">
+                    <div class="condition" style="color: #38ef7d;">sum == 0</div>
+                    <div class="action">记录答案 ✓</div>
+                </div>
+                <div class="movement-case">
+                    <div class="condition" style="color: #764ba2;">sum &lt; 0</div>
+                    <div class="action">left++ (增大总和)</div>
+                </div>
+            </div>
+            <p style="text-align: center; color: #888; margin-top: 15px;">
+                💡 由于数组已排序，<br>
+                右指针左移 → 总和减小<br>
+                左指针右移 → 总和增大
+            </p>
+        </div>
+        
+        <!-- Java代码 -->
+        <div class="section">
+            <h2 class="section-title">Java 代码实现</h2>
+            <div class="code-block">
+<pre><span class="keyword">class</span> <span class="type">Solution</span> {
+    <span class="keyword">public</span> <span class="type">List</span>&lt;<span class="type">List</span>&lt;<span class="type">Integer</span>&gt;&gt; <span class="function">threeSum</span>(<span class="type">int</span>[] <span class="variable">nums</span>) {
+        <span class="type">List</span>&lt;<span class="type">List</span>&lt;<span class="type">Integer</span>&gt;&gt; <span class="variable">result</span> = <span class="keyword">new</span> <span class="type">ArrayList</span>&lt;&gt;();
+        <span class="type">int</span> <span class="variable">n</span> = nums.length;
+        
+        <span class="comment">// 1. 排序</span>
+        <span class="type">Arrays</span>.<span class="function">sort</span>(nums);
+        
+        <span class="comment">// 2. 遍历固定第一个数</span>
+        <span class="keyword">for</span> (<span class="type">int</span> <span class="variable">i</span> = <span class="number">0</span>; i &lt; n - <span class="number">2</span>; i++) {
+            <span class="comment">// 剪枝：如果最小的数都大于0，不可能有解</span>
+            <span class="keyword">if</span> (nums[i] &gt; <span class="number">0</span>) <span class="keyword">break</span>;
+            
+            <span class="comment">// 去重：跳过相同的第一个数</span>
+            <span class="keyword">if</span> (i &gt; <span class="number">0</span> && nums[i] == nums[i - <span class="number">1</span>]) <span class="keyword">continue</span>;
+            
+            <span class="comment">// 3. 双指针寻找另外两个数</span>
+            <span class="type">int</span> <span class="variable">left</span> = i + <span class="number">1</span>;
+            <span class="type">int</span> <span class="variable">right</span> = n - <span class="number">1</span>;
+            
+            <span class="keyword">while</span> (left &lt; right) {
+                <span class="type">int</span> <span class="variable">sum</span> = nums[i] + nums[left] + nums[right];
+                
+                <span class="keyword">if</span> (sum == <span class="number">0</span>) {
+                    <span class="comment">// 找到一个答案</span>
+                    result.<span class="function">add</span>(<span class="type">Arrays</span>.<span class="function">asList</span>(nums[i], nums[left], nums[right]));
+                    
+                    <span class="comment">// 去重：跳过相同的左指针元素</span>
+                    <span class="keyword">while</span> (left &lt; right && nums[left] == nums[left + <span class="number">1</span>]) left++;
+                    <span class="comment">// 去重：跳过相同的右指针元素</span>
+                    <span class="keyword">while</span> (left &lt; right && nums[right] == nums[right - <span class="number">1</span>]) right--;
+                    
+                    <span class="comment">// 移动指针继续寻找</span>
+                    left++;
+                    right--;
+                } <span class="keyword">else if</span> (sum &lt; <span class="number">0</span>) {
+                    <span class="comment">// 总和太小，左指针右移</span>
+                    left++;
+                } <span class="keyword">else</span> {
+                    <span class="comment">// 总和太大，右指针左移</span>
+                    right--;
+                }
+            }
+        }
+        
+        <span class="keyword">return</span> result;
+    }
+}</pre>
+            </div>
+        </div>
+        
+        <!-- 动画演示 -->
+        <div class="section">
+            <h2 class="section-title">动画演示</h2>
+            <p style="margin-bottom: 15px;">以数组 <code>[-1, 0, 1, 2, -1, -4]</code> 为例（排序后: <code>[-4, -1, -1, 0, 1, 2]</code>）</p>
+            
+            <div class="demo-area">
+                <div class="array-viz" id="arrayViz">
+                    <!-- 动态生成 -->
+                </div>
+                
+                <div class="demo-controls">
+                    <button class="btn btn-secondary" onclick="resetDemo()">重置</button>
+                    <button class="btn btn-primary" onclick="nextStep()">下一步 →</button>
+                    <button class="btn btn-secondary" onclick="autoPlay()">自动播放</button>
+                </div>
+                
+                <div class="step-info" id="stepInfo">
+                    <h4>点击"下一步"开始演示</h4>
+                    <p id="stepDesc">数组已排序: [-4, -1, -1, 0, 1, 2]</p>
+                </div>
+                
+                <div class="step-info" id="resultArea" style="display: none; margin-top: 15px;">
+                    <h4>找到的答案：</h4>
+                    <div id="resultList"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 复杂度分析 -->
+        <div class="section">
+            <h2 class="section-title">复杂度分析</h2>
+            <div class="complexity-grid">
+                <div class="complexity-card">
+                    <h4>时间复杂度</h4>
+                    <div class="complexity-value">O(n²)</div>
+                    <p style="margin-top: 10px; color: #888;">
+                        排序 O(n log n)<br>
+                        双指针遍历 O(n²)
+                    </p>
+                </div>
+                <div class="complexity-card">
+                    <h4>空间复杂度</h4>
+                    <div class="complexity-value">O(log n)</div>
+                    <p style="margin-top: 10px; color: #888;">
+                        排序的栈空间<br>
+                        不考虑输出数组
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 易错点 -->
+        <div class="section">
+            <h2 class="section-title">易错点提醒</h2>
+            <ul class="idea-list">
+                <li>
+                    <span class="idea-number">⚠️</span>
+                    <div class="idea-content">
+                        <strong>去重时机</strong><br>
+                        外层循环去重要在处理完当前元素之后判断；内层循环去重要在找到答案后进行。
+                    </div>
+                </li>
+                <li>
+                    <span class="idea-number">⚠️</span>
+                    <div class="idea-content">
+                        <strong>边界条件</strong><br>
+                        注意 <code>i &lt; n - 2</code> 而不是 <code>i &lt; n</code>，因为至少需要3个数。
+                    </div>
+                </li>
+                <li>
+                    <span class="idea-number">⚠️</span>
+                    <div class="idea-content">
+                        <strong>去重后还要移动指针</strong><br>
+                        找到答案后去重完，还要执行 <code>left++</code> 和 <code>right--</code>，否则会死循环。
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+    
+    <script>
+        // 演示数据
+        const originalArray = [-1, 0, 1, 2, -1, -4];
+        const sortedArray = [...originalArray].sort((a, b) => a - b);
+        
+        // 演示步骤
+        const steps = [
+            { type: 'init', desc: '数组已排序: [-4, -1, -1, 0, 1, 2]，准备开始遍历', i: -1, left: -1, right: -1 },
+            { type: 'fix', desc: '固定 nums[0] = -4，设置 left = 1, right = 5', i: 0, left: 1, right: 5 },
+            { type: 'calc', desc: '计算 sum = -4 + (-1) + 2 = -3 < 0，left 右移', i: 0, left: 2, right: 5 },
+            { type: 'calc', desc: '计算 sum = -4 + (-1) + 2 = -3 < 0，left 右移', i: 0, left: 3, right: 5 },
+            { type: 'calc', desc: '计算 sum = -4 + 0 + 2 = -2 < 0，left 右移', i: 0, left: 4, right: 5 },
+            { type: 'calc', desc: '计算 sum = -4 + 1 + 2 = -1 < 0，left 右移', i: 0, left: 5, right: 5, break: true },
+            { type: 'fix', desc: 'nums[1] = -1 与 nums[0] = -4 不同，继续。固定 nums[1] = -1', i: 1, left: 2, right: 5 },
+            { type: 'calc', desc: '计算 sum = -1 + (-1) + 2 = 0 ✓ 找到答案！[-1, -1, 2]', i: 1, left: 2, right: 5, found: [-1, -1, 2] },
+            { type: 'move', desc: '去重后移动指针，left = 3, right = 4', i: 1, left: 3, right: 4 },
+            { type: 'calc', desc: '计算 sum = -1 + 0 + 1 = 0 ✓ 找到答案！[-1, 0, 1]', i: 1, left: 3, right: 4, found: [-1, 0, 1] },
+            { type: 'move', desc: '移动指针后 left >= right，退出内层循环', i: 1, left: 4, right: 3 },
+            { type: 'skip', desc: 'nums[2] = -1 与 nums[1] = -1 相同，跳过', i: 2, left: -1, right: -1 },
+            { type: 'fix', desc: '固定 nums[3] = 0，但 nums[3] > 0，剪枝退出', i: 3, left: -1, right: -1, end: true },
+            { type: 'end', desc: '遍历结束，返回结果: [[-1, -1, 2], [-1, 0, 1]]', i: -1, left: -1, right: -1 }
+        ];
+        
+        let currentStep = 0;
+        let results = [];
+        let autoPlayTimer = null;
+        
+        function renderArray() {
+            const viz = document.getElementById('arrayViz');
+            const step = steps[currentStep];
+            viz.innerHTML = '';
+            
+            sortedArray.forEach((num, idx) => {
+                const cell = document.createElement('div');
+                cell.className = 'array-cell cell-normal';
+                cell.textContent = num;
+                
+                // 根据当前步骤设置样式
+                if (step.i === idx) {
+                    cell.className = 'array-cell cell-fixed';
+                    cell.innerHTML = `${num}<span class="pointer-label pointer-fixed">i</span>`;
+                } else if (step.left === idx) {
+                    cell.className = 'array-cell cell-left';
+                    cell.innerHTML = `${num}<span class="pointer-label pointer-left">left</span>`;
+                } else if (step.right === idx) {
+                    cell.className = 'array-cell cell-right';
+                    cell.innerHTML = `${num}<span class="pointer-label pointer-right">right</span>`;
+                }
+                
+                // 高亮找到的答案
+                if (step.found && step.left <= idx && idx <= step.right) {
+                    cell.className = 'array-cell cell-found';
+                }
+                
+                viz.appendChild(cell);
+            });
+        }
+        
+        function updateStepInfo() {
+            const step = steps[currentStep];
+            document.getElementById('stepDesc').textContent = step.desc;
+            
+            // 更新结果列表
+            if (step.found) {
+                results.push(step.found);
+                const resultArea = document.getElementById('resultArea');
+                resultArea.style.display = 'block';
+                const resultList = document.getElementById('resultList');
+                resultList.innerHTML = results.map(r => `<code>[${r.join(', ')}]</code>`).join(', ');
+            }
+        }
+        
+        function nextStep() {
+            if (currentStep < steps.length - 1) {
+                currentStep++;
+                renderArray();
+                updateStepInfo();
+            }
+        }
+        
+        function resetDemo() {
+            currentStep = 0;
+            results = [];
+            document.getElementById('resultArea').style.display = 'none';
+            document.getElementById('resultList').innerHTML = '';
+            renderArray();
+            updateStepInfo();
+            if (autoPlayTimer) {
+                clearInterval(autoPlayTimer);
+                autoPlayTimer = null;
+            }
+        }
+        
+        function autoPlay() {
+            if (autoPlayTimer) {
+                clearInterval(autoPlayTimer);
+                autoPlayTimer = null;
+                return;
+            }
+            autoPlayTimer = setInterval(() => {
+                if (currentStep < steps.length - 1) {
+                    nextStep();
+                } else {
+                    clearInterval(autoPlayTimer);
+                    autoPlayTimer = null;
+                }
+            }, 1500);
+        }
+        
+        // 初始化
+        renderArray();
+    </script>
+</body>
+</html>
