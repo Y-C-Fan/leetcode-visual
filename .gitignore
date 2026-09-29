@@ -1,0 +1,15 @@
+# 站点构建产物（发布上传用，不入库）
+/dist/
+
+# Qoder Sites 本地描述符：含机器路径与草稿恢复记录，不应共享
+*.qoder.site
+
+# Node / Playwright
+node_modules/
+test-results/
+playwright-report/
+
+# 编辑器与系统
+.vscode/
+.DS_Store
+Thumbs.db

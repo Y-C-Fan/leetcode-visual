@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>题目集 · LeetCode 可视化</title>
+<meta name="description" content="LeetCode 热题 100 算法题与 MySQL 事务原理的分步可视化，按官方 17 类题型归档，可用方向键逐帧回放执行过程。" />
+<meta name="color-scheme" content="light" />
+<style>
+  :root {
+    --canvas: #ffffff;
+    --parchment: #f5f5f7;
+    --pearl: #fafafc;
+    --ink: #1d1d1f;
+    --ink-80: #333333;
+    --muted: #7a7a7a;
+    --muted-2: #86868b;
+    --muted-dark: #a1a1a6;
+    --hairline: #e0e0e0;
+    --divider: #f0f0f0;
+    --blue: #0071e3;
+    --link: #0066cc;
+    --blue-on-dark: #2997ff;
+    --tile: #1d1d1f;
+    --tile-2: #272729;
+    --easy: #34c759;
+    --medium: #ff9500;
+    --hard: #ff3b30;
+
+    --r-xs: 5px;
+    --r-sm: 8px;
+    --r-md: 11px;
+    --r-lg: 18px;
+    --r-pill: 9999px;
+
+    --s-xxs: 4px;
+    --s-xs: 8px;
+    --s-sm: 12px;
+    --s-md: 17px;
+    --s-lg: 24px;
+    --s-xl: 32px;
+    --s-xxl: 48px;
+    --s-section: 80px;
+
+    --font: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont,
+      "Segoe UI Variable Display", "Segoe UI", Roboto, "Helvetica Neue",
+      "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --mono: "SF Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+    --shell: 1080px;
+    --bar-h: 52px;
+    --toc-w: 292px;
+    --ease: cubic-bezier(.28, .11, .32, 1);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--canvas);
+    color: var(--ink);
+    font: 400 17px/1.47 var(--font);
+    letter-spacing: -.374px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3 { margin: 0; font-weight: 600; }
+  h1 { font-size: 56px; line-height: 1.07; letter-spacing: -.28px; }
+  h2 { font-size: 40px; line-height: 1.10; letter-spacing: -.30px; }
+  h3 { font-size: 21px; line-height: 1.19; letter-spacing: -.20px; }
+  p { margin: 0; }
+  a { color: var(--link); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  :focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: var(--r-xs); }
+
+  .shell { width: 100%; max-width: var(--shell); margin-inline: auto; padding-inline: var(--s-lg); }
+
+  .skip {
+    position: absolute; left: -9999px; top: 0; z-index: 20;
+    background: var(--ink); color: #fff; padding: 10px 16px; border-radius: var(--r-sm); font-size: 14px;
+  }
+  .skip:focus { left: var(--s-sm); top: var(--s-sm); }
+
+  /* ——— 顶部磨砂条 ——— */
+  .bar {
+    position: sticky; top: 0; z-index: 12; height: var(--bar-h);
+    background: rgba(245, 245, 247, .8);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    backdrop-filter: saturate(180%) blur(20px);
+    border-bottom: 1px solid rgba(0, 0, 0, .08);
+  }
+  .bar .shell { display: flex; align-items: center; gap: var(--s-lg); height: 100%; max-width: none; }
+  .bar .mark { font-size: 17px; font-weight: 600; letter-spacing: -.374px; white-space: nowrap; }
+  .bar nav { margin-left: auto; display: flex; align-items: center; gap: var(--s-lg); overflow-x: auto; scrollbar-width: none; }
+  .bar nav::-webkit-scrollbar { display: none; }
+  .bar nav a { color: var(--ink-80); font-size: 12px; letter-spacing: -.12px; white-space: nowrap; }
+  .bar nav a:hover { color: var(--blue); text-decoration: none; }
+
+  .frame { display: flex; align-items: flex-start; }
+
+  /* ——— 可折叠树形目录 ——— */
+  .toc {
+    position: sticky; top: var(--bar-h); flex: none;
+    width: var(--toc-w); height: calc(100vh - var(--bar-h));
+    overflow-y: auto; overscroll-behavior: contain;
+    padding: var(--s-md) var(--s-sm) var(--s-xxl) var(--s-md);
+    background: var(--parchment);
+    border-right: 1px solid rgba(0, 0, 0, .08);
+    scrollbar-width: thin;
+  }
+  .toc .label { padding-left: var(--s-xs); font-size: 12px; letter-spacing: -.12px; color: var(--muted); }
+
+  .toc details { margin-top: 2px; }
+  .toc summary {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px var(--s-xs); border-radius: var(--r-sm);
+    font-size: 14px; font-weight: 600; letter-spacing: -.224px; color: var(--ink);
+    cursor: pointer; list-style: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .toc summary::-webkit-details-marker { display: none; }
+  .toc summary:hover { background: rgba(0, 0, 0, .05); }
+  .toc summary .caret {
+    flex: none; width: 0; height: 0;
+    border-left: 4px solid var(--muted); border-top: 4px solid transparent; border-bottom: 4px solid transparent;
+    transition: transform .18s var(--ease);
+  }
+  .toc details[open] > summary .caret { transform: rotate(90deg); }
+  .toc summary .cnt { margin-left: auto; font: 400 11px/1 var(--mono); letter-spacing: 0; color: var(--muted-2); }
+  .toc details.empty > summary { color: var(--muted-2); font-weight: 400; cursor: default; }
+  .toc details.empty > summary:hover { background: none; }
+  .toc details.empty .caret { border-left-color: var(--hairline); }
+  .toc details.empty .cnt { color: var(--hairline); }
+  .toc details.active > summary { color: var(--blue); }
+
+  .toc .kids { padding-left: var(--s-md); }
+  .toc a.t-sub {
+    display: block; margin-top: 2px; padding: 4px var(--s-xs);
+    font-size: 12px; letter-spacing: -.12px; color: var(--muted);
+  }
+  .toc a.t-sub:hover { color: var(--blue); text-decoration: none; }
+  .toc a.t-sub[aria-current="true"] { color: var(--blue); font-weight: 600; }
+  .toc a.t-prob {
+    display: flex; gap: 7px; align-items: baseline;
+    padding: 4px var(--s-xs) 4px var(--s-sm); border-radius: var(--r-sm);
+    font-size: 14px; letter-spacing: -.224px; line-height: 1.35; color: var(--ink-80);
+  }
+  .toc a.t-prob:hover { background: rgba(0, 0, 0, .05); color: var(--link); text-decoration: none; }
+  .toc .t-num { flex: none; width: 34px; font: 400 11px/1.5 var(--mono); letter-spacing: 0; color: var(--muted-2); }
+  .toc .t-zh { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .main { flex: 1; min-width: 0; }
+
+  /* ——— 首屏即工具台 ——— */
+  .hero { background: var(--parchment); padding: 64px 0 var(--s-xxl); text-align: center; }
+  .hero .eyebrow { font-size: 14px; letter-spacing: -.224px; color: var(--muted); margin-bottom: var(--s-sm); }
+  .hero h1 { max-width: 13ch; margin-inline: auto; }
+  .hero .lead { margin: var(--s-md) auto 0; max-width: 40ch; font-size: 21px; font-weight: 400; line-height: 1.3; letter-spacing: -.20px; color: var(--ink-80); }
+
+  .stats { display: flex; justify-content: center; flex-wrap: wrap; gap: var(--s-xxl); margin: var(--s-xl) 0 var(--s-xxl); }
+  .stat { min-width: 104px; }
+  .stat b { display: block; font-size: 40px; font-weight: 600; line-height: 1.1; letter-spacing: -.30px; }
+  .stat span { display: block; margin-top: 2px; font-size: 12px; letter-spacing: -.12px; color: var(--muted); }
+
+  .find { max-width: 560px; margin-inline: auto; }
+  .find input {
+    width: 100%; height: 44px; padding: 12px 20px;
+    font: 400 17px/1 var(--font); letter-spacing: -.374px; color: var(--ink);
+    background: var(--canvas); border: 1px solid var(--hairline); border-radius: var(--r-md);
+    -webkit-appearance: none; appearance: none;
+  }
+  .find input::placeholder { color: var(--muted-2); }
+  .find input:hover { border-color: #cfcfd4; }
+  .find input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 4px rgba(0, 113, 227, .12); }
+
+  .chips { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--s-xs); margin: var(--s-md) 0 0; }
+  .chip {
+    padding: 8px 15px; border: 1px solid var(--hairline); border-radius: var(--r-pill);
+    background: transparent; color: var(--ink-80);
+    font: 400 14px/1 var(--font); letter-spacing: -.224px; white-space: nowrap; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color .2s var(--ease), color .2s var(--ease), border-color .2s var(--ease), transform .1s var(--ease);
+  }
+  .chip:hover { border-color: var(--muted); }
+  .chip:active { transform: scale(.95); }
+  .chip[aria-pressed="true"] { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+  .hint { margin: var(--s-lg) 0 0; font-size: 12px; letter-spacing: -.12px; color: var(--muted); }
+  kbd {
+    font: 400 11px/1 var(--mono); letter-spacing: 0;
+    padding: 3px 6px; border: 1px solid var(--hairline); border-radius: var(--r-xs);
+    background: var(--canvas); color: var(--ink-80);
+  }
+
+  .status { padding: var(--s-lg) 0 0; font-size: 14px; letter-spacing: -.224px; color: var(--muted); }
+  .status[hidden] { display: none; }
+  .status .reset { margin-left: 8px; }
+
+  /* ——— 章节 ——— */
+  .section { padding: var(--s-section) 0; }
+  .section > .shell > header { max-width: 62ch; margin-bottom: var(--s-xxl); }
+  .section .kicker { font-size: 14px; letter-spacing: -.224px; color: var(--blue); font-weight: 600; }
+  .section h2 { margin-top: var(--s-xs); }
+  .section .desc { margin-top: var(--s-sm); font-size: 17px; color: var(--muted); }
+
+  .group { margin-bottom: var(--s-xxl); scroll-margin-top: calc(var(--bar-h) + 16px); }
+  .group:last-child { margin-bottom: 0; }
+  .group > h3 { color: var(--ink); }
+  .group > .sub-note { margin-top: 4px; font-size: 14px; letter-spacing: -.224px; color: var(--muted); }
+  .grid { display: grid; gap: var(--s-lg); margin-top: var(--s-lg); grid-template-columns: repeat(auto-fill, minmax(258px, 1fr)); }
+
+  .card {
+    display: flex; flex-direction: column; gap: var(--s-xs);
+    min-height: 132px; padding: var(--s-lg);
+    background: var(--canvas); border: 1px solid rgba(0, 0, 0, .08); border-radius: var(--r-lg);
+    color: inherit;
+    transition: border-color .2s var(--ease), background-color .2s var(--ease), transform .2s var(--ease);
+  }
+  .card:hover { text-decoration: none; border-color: var(--muted); background: var(--pearl); transform: translateY(-2px); }
+  .card .num { font: 400 12px/1 var(--mono); letter-spacing: 0; color: var(--muted-2); }
+  .card .zh { font-size: 17px; font-weight: 600; letter-spacing: -.374px; line-height: 1.24; }
+  .card:hover .zh { color: var(--link); }
+  .card .en { font-size: 14px; letter-spacing: -.224px; line-height: 1.29; color: var(--muted); }
+  .card .foot { margin-top: auto; display: flex; align-items: center; gap: 6px; font-size: 12px; letter-spacing: -.12px; color: var(--muted); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+  .dot.Easy { background: var(--easy); }
+  .dot.Medium { background: var(--medium); }
+  .dot.Hard { background: var(--hard); }
+  .hot { color: var(--blue); }
+
+  .invert { background: var(--tile); color: #fff; }
+  .invert .kicker { color: var(--blue-on-dark); }
+  .invert .desc, .invert .sub-note { color: var(--muted-dark); }
+  .invert h3 { color: #fff; }
+  .invert .card { background: var(--tile-2); border-color: rgba(255, 255, 255, .12); color: #fff; }
+  .invert .card:hover { background: #2a2a2c; border-color: var(--muted-dark); }
+  .invert .card:hover .zh { color: var(--blue-on-dark); }
+  .invert .card .num, .invert .card .en, .invert .card .foot { color: var(--muted-dark); }
+  .invert .hot { color: var(--blue-on-dark); }
+
+  .empty { padding: var(--s-xxl) 0; text-align: center; color: var(--muted); font-size: 17px; }
+  .empty[hidden] { display: none; }
+
+  .foot-notes { padding: var(--s-xl) 0; border-top: 1px solid rgba(0, 0, 0, .08); }
+  .foot-notes .meta { display: flex; flex-wrap: wrap; gap: var(--s-xs) var(--s-lg); font-size: 12px; letter-spacing: -.12px; color: var(--muted); }
+
+  .rise { opacity: 0; transform: translateY(12px); }
+  .rise.in { opacity: 1; transform: none; transition: opacity .5s var(--ease), transform .5s var(--ease); }
+
+  @media (max-width: 1023px) { .toc { display: none; } }
+
+  @media (max-width: 833px) {
+    h1 { font-size: 40px; letter-spacing: -.30px; }
+    h2 { font-size: 32px; }
+    .hero { padding-top: var(--s-xxl); }
+    .hero .lead { font-size: 19px; }
+    .stats { gap: var(--s-xl); }
+    .stat b { font-size: 32px; }
+    .section { padding: var(--s-xxl) 0; }
+    .section > .shell > header { margin-bottom: var(--s-xl); }
+    .group { margin-bottom: var(--s-xl); }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--s-md); }
+    .card { padding: var(--s-md); min-height: 0; }
+  }
+
+  @media (max-width: 480px) {
+    h1 { font-size: 32px; letter-spacing: -.28px; }
+    h2 { font-size: 28px; }
+    .shell { padding-inline: var(--s-md); }
+    .stats { flex-wrap: wrap; gap: var(--s-md) var(--s-xl); }
+    .grid { grid-template-columns: 1fr; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .rise { opacity: 1; transform: none; }
+    .rise.in { transition: none; }
+    .card, .chip, .toc summary .caret { transition: none; }
+    .card:hover { transform: none; }
+  }
+</style>
+</head>
+<body>
+
+<a class="skip" href="#catalog">跳到题目列表</a>
+
+<div class="bar">
+  <div class="shell">
+    <span class="mark">LeetCode 可视化</span>
+    <nav aria-label="跳转">
+      <a href="#cover">覆盖进度</a>
+      <a href="https://github.com/Y-C-Fan/leetcode-visual" rel="noopener">源码仓库</a>
+    </nav>
+  </div>
+</div>
+
+<div class="frame">
+  <nav class="toc" id="toc" aria-label="题目目录"></nav>
+
+  <div class="main">
+    <header class="hero">
+      <div class="shell">
+        <p class="eyebrow">LeetCode 热题 100 · 分步可视化</p>
+        <h1>Hot 100 的每一步，都看得见</h1>
+        <p class="lead">按官方 17 类题型归档，从双指针、单调栈、二叉树到多维动态规划，每题独立成页、逐帧回放。</p>
+
+        <div class="stats" id="cover">
+          <div class="stat"><b>34</b><span>可视化页面</span></div>
+          <div class="stat"><b>21</b><span>已覆盖官方热题</span></div>
+          <div class="stat"><b>9</b><span>建档题型 / 17</span></div>
+          <div class="stat"><b>7</b><span>难度 Hard</span></div>
+        </div>
+
+        <form class="find" role="search" onsubmit="return false">
+          <label class="skip" for="q">按题号、中文或英文搜索题目</label>
+          <input id="q" type="search" placeholder="搜索题号、题名或题型，例如 322 / 背包 / edit distance" autocomplete="off" />
+        </form>
+
+        <div class="chips" role="group" aria-label="按难度筛选">
+          <button class="chip" type="button" data-diff="all" aria-pressed="true">全部</button>
+          <button class="chip" type="button" data-diff="Easy" aria-pressed="false">Easy</button>
+          <button class="chip" type="button" data-diff="Medium" aria-pressed="false">Medium</button>
+          <button class="chip" type="button" data-diff="Hard" aria-pressed="false">Hard</button>
+          <button class="chip" type="button" data-diff="hot" aria-pressed="false">仅官方热题</button>
+          <button class="chip" type="button" data-diff="db" aria-pressed="false">MySQL</button>
+        </div>
+
+        <p class="hint">打开任意一页后，用 <kbd>←</kbd> <kbd>→</kbd> 前后推进，<kbd>空格</kbd> 播放或暂停</p>
+      </div>
+    </header>
+
+    <main id="catalog">
+      <p class="status shell" id="status" hidden aria-live="polite"></p>
+      <div class="empty shell" id="empty" hidden>没有匹配的题目。<a href="#" id="clear">清除筛选条件</a></div>
+    </main>
+
+    <footer class="foot-notes">
+      <div class="shell meta">
+        <span>题型划分取自 <a href="https://leetcode.cn/studyplan/top-100-liked/" rel="noopener">LeetCode 热题 100</a> 官方分类；题单外的变体跟随其母题归类。</span>
+        <span>每页为独立自包含 HTML，不加载第三方脚本。</span>
+        <span>代码以仓库 <a href="https://github.com/Y-C-Fan/leetcode-visual" rel="noopener">Y-C-Fan/leetcode-visual</a> 为准。</span>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<script>
+  // hot: true = 出现在 LeetCode 热题 100 官方题单中
+  const TAXONOMY = [
+    { id: 'hash', name: '哈希' },
+    {
+      id: 'two-pointers', name: '双指针', desc: '排序或原地伸缩，用两个下标扫完序列。',
+      sub: [{
+        id: 'tp-meet', name: '对撞指针', note: '排序后固定一个数，左右夹逼',
+        items: [{ n: '15', zh: '三数之和', en: '3Sum', lv: 'Medium', hot: true, href: '双指针/0015_3sum.html' }]
+      }]
+    },
+    {
+      id: 'sliding-window', name: '滑动窗口', desc: '右端扩张、左端收缩，把子串问题压到线性时间。',
+      sub: [{
+        id: 'sw-var', name: '变长窗口', note: '窗口大小随合法条件伸缩',
+        items: [{ n: '438', zh: '找到字符串中所有字母异位词', en: 'Find All Anagrams in a String', lv: 'Medium', hot: true, href: '滑动窗口/0438_find_all_anagrams.html' }]
+      }]
+    },
+    { id: 'substring', name: '子串' },
+    {
+      id: 'array', name: '普通数组', desc: '前缀和、区间处理与原地算法。',
+      sub: [{
+        id: 'ar-kadane', name: '连续子数组', note: 'Kadane：以 i 结尾的最优解',
+        items: [{ n: '53', zh: '最大子数组和', en: 'Maximum Subarray', lv: 'Medium', hot: true, href: '普通数组/0053_maximum_subarray.html' }]
+      }]
+    },
+    { id: 'matrix', name: '矩阵' },
+    { id: 'linked-list', name: '链表' },
+    {
+      id: 'binary-tree', name: '二叉树', desc: '递归返回值与自底向上汇总。',
+      sub: [{
+        id: 'bt-path', name: '路径与公共祖先', note: '递归"冒泡"，返回值与全局答案分开算',
+        items: [
+          { n: '124', zh: '二叉树中的最大路径和', en: 'Binary Tree Maximum Path Sum', lv: 'Hard', hot: true, href: '二叉树/0124_binary_tree_maximum_path_sum.html' },
+          { n: '236', zh: '二叉树的最近公共祖先', en: 'Lowest Common Ancestor', lv: 'Medium', hot: true, href: '二叉树/0236_lowest_common_ancestor_of_a_binary_tree.html' }
+        ]
+      }]
+    },
+    { id: 'graph', name: '图论' },
+    { id: 'backtracking', name: '回溯' },
+    { id: 'binary-search', name: '二分查找' },
+    {
+      id: 'stack', name: '栈', desc: '用栈保存待决元素，等更优条件出现时结算。',
+      sub: [{
+        id: 'st-mono', name: '单调栈', note: '维持栈内单调，出栈即找到下一个更值元素',
+        items: [{ n: '84', zh: '柱状图中最大的矩形', en: 'Largest Rectangle in Histogram', lv: 'Hard', hot: true, href: '栈/0084_largest_rectangle_in_histogram.html' }]
+      }]
+    },
+    { id: 'heap', name: '堆' },
+    {
+      id: 'greedy', name: '贪心算法', desc: '官方把股票系列归在贪心；题单外的股票变体跟随母题 121。',
+      sub: [{
+        id: 'gr-stock', name: '股票买卖', note: '从一次交易到 k 次交易、冷冻期与手续费',
+        items: [
+          { n: '121', zh: '买卖股票的最佳时机', en: 'Best Time to Buy and Sell Stock', lv: 'Easy', hot: true, href: '贪心算法/0121_best_time_to_buy_and_sell_stock.html' },
+          { n: '122', zh: '买卖股票的最佳时机 II', en: 'Best Time II', lv: 'Medium', href: '贪心算法/0122_best_time_to_buy_and_sell_stock_ii.html' },
+          { n: '123', zh: '买卖股票的最佳时机 III', en: 'Best Time III', lv: 'Hard', href: '贪心算法/0123_best_time_to_buy_and_sell_stock_iii.html' },
+          { n: '188', zh: '买卖股票的最佳时机 IV', en: 'Best Time IV', lv: 'Hard', href: '贪心算法/0188_best_time_to_buy_and_sell_stock_iv.html' },
+          { n: '309', zh: '含冷冻期', en: 'With Cooldown', lv: 'Medium', href: '贪心算法/0309_best_time_to_buy_and_sell_stock_with_cooldown.html' },
+          { n: '714', zh: '含手续费', en: 'With Transaction Fee', lv: 'Medium', href: '贪心算法/0714_best_time_to_buy_and_sell_stock_with_transaction_fee.html' }
+        ]
+      }]
+    },
+    {
+      id: 'dp', name: '动态规划', desc: '一维状态递推；官方题单里的背包、打家劫舍与线性 DP 都在这里。',
+      sub: [
+        {
+          id: 'dp-intro', name: '入门与线性', note: '斐波那契式递推与同时维护最大最小',
+          items: [
+            { n: '70', zh: '爬楼梯', en: 'Climbing Stairs', lv: 'Easy', hot: true, href: '动态规划/0070_climbing_stairs.html' },
+            { n: '152', zh: '乘积最大子数组', en: 'Maximum Product Subarray', lv: 'Medium', hot: true, href: '动态规划/0152_maximum_product_subarray.html' }
+          ]
+        },
+        {
+          id: 'dp-knapsack', name: '背包', note: '0/1 背包与完全背包的遍历顺序差异',
+          items: [
+            { n: '279', zh: '完全平方数', en: 'Perfect Squares', lv: 'Medium', hot: true, href: '动态规划/0279_perfect_squares.html' },
+            { n: '322', zh: '零钱兑换', en: 'Coin Change', lv: 'Medium', hot: true, href: '动态规划/0322_coin_change.html' },
+            { n: '518', zh: '零钱兑换 II', en: 'Coin Change II', lv: 'Medium', href: '动态规划/0518_coin_change_ii.html' },
+            { n: '416', zh: '分割等和子集', en: 'Partition Equal Subset Sum', lv: 'Medium', hot: true, href: '动态规划/0416_partition_equal_subset_sum.html' }
+          ]
+        },
+        {
+          id: 'dp-robber', name: '打家劫舍', note: '选与不选的二元状态；II 增加环形约束',
+          items: [
+            { n: '198', zh: '打家劫舍', en: 'House Robber', lv: 'Medium', hot: true, href: '动态规划/0198_house_robber.html' },
+            { n: '213', zh: '打家劫舍 II', en: 'House Robber II', lv: 'Medium', href: '动态规划/0213_house_robber_ii.html' }
+          ]
+        },
+        {
+          id: 'dp-is', name: '子序列', note: 'LIS：以 i 结尾的最优，需回看全部前驱',
+          items: [
+            { n: '300', zh: '最长递增子序列', en: 'Longest Increasing Subsequence', lv: 'Medium', hot: true, href: '动态规划/0300_longest_increasing_subsequence.html' }
+          ]
+        },
+        {
+          id: 'dp-string', name: '字符串与括号', note: '完全背包式拼串与栈式匹配方程',
+          items: [
+            { n: '139', zh: '单词拆分', en: 'Word Break', lv: 'Medium', hot: true, href: '动态规划/0139_word_break.html' },
+            { n: '32', zh: '最长有效括号', en: 'Longest Valid Parentheses', lv: 'Hard', hot: true, href: '动态规划/0032_longest_valid_parentheses.html' }
+          ]
+        }
+      ]
+    },
+    {
+      id: 'dp-2d', name: '多维动态规划', desc: '状态需要两个下标：网格坐标或两条序列的位置。',
+      sub: [
+        {
+          id: 'd2d-grid', name: '网格与路径', note: '只能向右向下时的二维递推',
+          items: [
+            { n: '62', zh: '不同路径', en: 'Unique Paths', lv: 'Medium', hot: true, href: '多维动态规划/0062_unique_paths.html' },
+            { n: '63', zh: '不同路径 II', en: 'Unique Paths II', lv: 'Medium', href: '多维动态规划/0063_unique_paths_ii.html' },
+            { n: '64', zh: '最小路径和', en: 'Minimum Path Sum', lv: 'Medium', hot: true, href: '多维动态规划/0064_minimum_path_sum.html' },
+            { n: '120', zh: '三角形最小路径和', en: 'Triangle', lv: 'Medium', href: '多维动态规划/0120_triangle.html' }
+          ]
+        },
+        {
+          id: 'd2d-twoway', name: '双串模型', note: 'dp[i][j] 同时枚举两个序列',
+          items: [
+            { n: '5', zh: '最长回文子串', en: 'Longest Palindromic Substring', lv: 'Medium', hot: true, href: '多维动态规划/0005_longest_palindromic_substring.html' },
+            { n: '1143', zh: '最长公共子序列', en: 'Longest Common Subsequence', lv: 'Medium', hot: true, href: '多维动态规划/1143_longest_common_subsequence.html' },
+            { n: '72', zh: '编辑距离', en: 'Edit Distance', lv: 'Hard', hot: true, href: '多维动态规划/0072_edit_distance.html' },
+            { n: '97', zh: '交错字符串', en: 'Interleaving String', lv: 'Medium', href: '多维动态规划/0097_interleaving_string.html' },
+            { n: '115', zh: '不同的子序列', en: 'Distinct Subsequences', lv: 'Hard', href: '多维动态规划/0115_distinct_subsequences.html' }
+          ]
+        }
+      ]
+    },
+    { id: 'tricks', name: '技巧' },
+    {
+      id: 'db', name: '数据库', tone: 'dark', desc: '超出算法范围：并发事务的隔离级别与多版本可见性判断。',
+      sub: [{
+        id: 'db-iso', name: '事务与 MVCC', note: 'RR / RC 下的读可见性与快照',
+        items: [
+          { n: null, zh: 'MySQL 事务隔离级别', en: 'Isolation Levels', lv: 'db', href: '数据库/mysql_transaction_isolation.html' },
+          { n: null, zh: 'MVCC 原理演示', en: 'Multi-Version Concurrency Control', lv: 'db', href: '数据库/mvcc_explanation.html' }
+        ]
+      }]
+    }
+  ];
+
+  const DIFF_LABEL = { Easy: 'Easy', Medium: 'Medium', Hard: 'Hard', db: '数据库演示' };
+  const DOT = ['', 'Easy', 'Medium', 'Hard', 'db'];
+  const OFFICIAL = 17;
+
+  let query = '';
+  let diff = 'all';
+  let booted = false;
+  let io = null;
+  let tid = 0;
+  let spyBound = false;
+
+  function reduceMotion() { return matchMedia('(prefers-reduced-motion: reduce)').matches; }
+
+  function matches(it) {
+    if (diff === 'hot' && !it.hot) return false;
+    if (diff !== 'all' && diff !== 'hot' && it.lv !== diff) return false;
+    if (!query) return true;
+    return [it.n, it.zh, it.en, it.sub, it.cat].join(' ').toLowerCase().includes(query);
+  }
+
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  function card(it) {
+    const a = el('a', 'card');
+    a.href = it.href;
+    if (it.n) a.appendChild(el('span', 'num', 'LeetCode ' + it.n));
+    a.appendChild(el('span', 'zh', it.zh));
+    a.appendChild(el('span', 'en', it.en));
+    const foot = el('span', 'foot');
+    if (DOT.indexOf(it.lv) > 0) foot.appendChild(el('span', 'dot ' + it.lv));
+    foot.appendChild(el('span', 'tag', DIFF_LABEL[it.lv] || it.lv));
+    if (it.hot) {
+      foot.appendChild(el('span', 'tag', '·'));
+      foot.appendChild(el('span', 'tag hot', '官方热题'));
+    }
+    a.appendChild(foot);
+    return a;
+  }
+
+  function buildToc(visible) {
+    const toc = document.getElementById('toc');
+    toc.textContent = '';
+    toc.appendChild(el('p', 'label', '目录 · 热题 100 十七类'));
+
+    for (const cat of TAXONOMY) {
+      const d = document.createElement('details');
+      d.dataset.cat = cat.id;
+      const sum = el('summary');
+      sum.appendChild(el('span', 'caret'));
+      sum.appendChild(el('span', null, cat.name));
+      d.appendChild(sum);
+
+      const subs = visible.get(cat.id);
+      if (!subs) {
+        d.className = 'empty';
+        sum.appendChild(el('span', 'cnt', '待补充'));
+        toc.appendChild(d);
+        continue;
+      }
+
+      sum.appendChild(el('span', 'cnt', String(subs.reduce((n, s) => n + s.items.length, 0))));
+
+      const kids = el('div', 'kids');
+      for (const s of subs) {
+        const sub = el('a', 't-sub', s.name);
+        sub.href = '#' + s.id;
+        kids.appendChild(sub);
+        for (const it of s.items) {
+          const a = el('a', 't-prob');
+          a.href = it.href;
+          a.appendChild(el('span', 't-num', it.n || '·'));
+          const z = el('span', 't-zh', it.zh);
+          z.title = it.zh;
+          a.appendChild(z);
+          kids.appendChild(a);
+        }
+      }
+      d.appendChild(kids);
+      toc.appendChild(d);
+    }
+  }
+
+  function render() {
+    const main = document.getElementById('catalog');
+    main.querySelectorAll('.section').forEach(n => n.remove());
+    query = document.getElementById('q').value.trim().toLowerCase();
+
+    const frag = document.createDocumentFragment();
+    const visible = new Map();
+    let total = 0;
+
+    for (const cat of TAXONOMY) {
+      if (!cat.sub) continue;
+      const section = el('section', 'section rise' + (cat.tone === 'dark' ? ' invert' : ''));
+      section.id = cat.id;
+      section.setAttribute('aria-labelledby', cat.id + '-h');
+
+      const shell = el('div', 'shell');
+      const header = el('header');
+      header.appendChild(el('p', 'kicker', '热题 100 · ' + cat.name));
+      const h2 = el('h2', null, cat.name);
+      h2.id = cat.id + '-h';
+      header.appendChild(h2);
+      if (cat.desc) header.appendChild(el('p', 'desc', cat.desc));
+      shell.appendChild(header);
+
+      let catShown = 0;
+      const shown = [];
+
+      for (const s of cat.sub) {
+        const items = s.items
+          .map(it => Object.assign({ sub: s.name, cat: cat.name }, it))
+          .filter(matches)
+          .sort((a, b) => (Number(a.n) || 0) - (Number(b.n) || 0));
+        if (!items.length) continue;
+
+        catShown += items.length;
+        total += items.length;
+        shown.push({ id: s.id, name: s.name, items });
+
+        const box = el('div', 'group');
+        box.id = s.id;
+        box.appendChild(el('h3', null, s.name));
+        box.appendChild(el('p', 'sub-note', s.note));
+        const grid = el('div', 'grid');
+        items.forEach(it => grid.appendChild(card(it)));
+        box.appendChild(grid);
+        shell.appendChild(box);
+      }
+
+      if (!catShown) continue;
+      visible.set(cat.id, shown);
+      section.appendChild(shell);
+      frag.appendChild(section);
+    }
+
+    main.appendChild(frag);
+    buildToc(visible);
+
+    const status = document.getElementById('status');
+    if (query || diff !== 'all') {
+      status.hidden = false;
+      status.textContent = query
+        ? '匹配 “' + query + '”：共 ' + total + ' 个页面'
+        : '当前筛选：共 ' + total + ' 个页面';
+      const reset = el('a', 'reset', '清除筛选');
+      reset.href = '#';
+      reset.onclick = e => { e.preventDefault(); clearAll(); };
+      status.appendChild(reset);
+    } else {
+      status.hidden = true;
+    }
+
+    document.getElementById('empty').hidden = total > 0;
+
+    if (reduceMotion() || booted || !('IntersectionObserver' in window)) {
+      main.querySelectorAll('.rise').forEach(n => n.classList.add('in'));
+    } else {
+      observe();
+    }
+    booted = true;
+    spy();
+  }
+
+  function clearAll() {
+    document.getElementById('q').value = '';
+    diff = 'all';
+    document.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c.dataset.diff === 'all')));
+    render();
+  }
+
+  function observe() {
+    if (io) io.disconnect();
+    io = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+      });
+    }, { rootMargin: '0px 0px -8% 0px' });
+    document.querySelectorAll('.rise:not(.in)').forEach(n => io.observe(n));
+  }
+
+  // 滚动时高亮目录中的当前子类，并自动展开其所属大类
+  function updateSpy() {
+    const groups = [...document.querySelectorAll('.group[id]')];
+    if (!groups.length) return;
+    let active = groups[0];
+    for (const g of groups) if (g.getBoundingClientRect().top <= 100) active = g;
+
+    document.querySelectorAll('.toc .t-sub').forEach(a => a.removeAttribute('aria-current'));
+    document.querySelectorAll('.toc details').forEach(d => d.classList.remove('active'));
+
+    const link = document.querySelector('.toc .t-sub[href="#' + active.id + '"]');
+    if (!link) return;
+    link.setAttribute('aria-current', 'true');
+    const d = link.closest('details');
+    if (d) { d.open = true; d.classList.add('active'); }
+  }
+
+  function spy() {
+    if (!spyBound) {
+      spyBound = true;
+      addEventListener('scroll', updateSpy, { passive: true });
+      addEventListener('resize', updateSpy, { passive: true });
+      // 点击目录子类立即高亮：末类滚不到读行，只靠滚动判定会点不亮
+      document.getElementById('toc').addEventListener('click', e => {
+        const sub = e.target.closest('.t-sub');
+        if (!sub) return;
+        document.querySelectorAll('.toc .t-sub').forEach(a => a.removeAttribute('aria-current'));
+        sub.setAttribute('aria-current', 'true');
+        const d = sub.closest('details');
+        if (d) d.classList.add('active');
+      });
+    }
+    updateSpy();
+  }
+
+  document.getElementById('q').addEventListener('input', () => {
+    clearTimeout(tid);
+    tid = setTimeout(render, 120);
+  });
+
+  document.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      diff = chip.dataset.diff;
+      document.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c === chip)));
+      render();
+    });
+  });
+
+  document.getElementById('clear').addEventListener('click', e => { e.preventDefault(); clearAll(); });
+
+  const all = TAXONOMY.flatMap(c => (c.sub || []).flatMap(s => s.items.map(it => ({ ...it, cat: c.name }))));
+  const officialFilled = TAXONOMY.filter(c => c.sub && c.id !== 'db').length;
+  const statVals = [
+    all.length,
+    all.filter(i => i.hot).length,
+    officialFilled,
+    all.filter(i => i.lv === 'Hard').length
+  ];
+  document.querySelectorAll('.stat b').forEach((b, i) => { b.textContent = statVals[i]; });
+  document.querySelectorAll('.stat span')[2].textContent = '建档题型 / ' + OFFICIAL;
+
+  render();
+</script>
+</body>
+</html>
