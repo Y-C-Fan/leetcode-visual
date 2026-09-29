@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LeetCode 236 二叉树的最近公共祖先 · 可视化理解</title>
+<style>
+  :root{
+    --bg:#0e1117; --panel:#161b22; --panel2:#1c2230; --line:#2b3444;
+    --txt:#e6edf3; --dim:#8b949e; --accent:#58a6ff; --green:#3fb950;
+    --red:#f85149; --amber:#d29922; --purple:#bc8cff;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--txt);
+    font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+    font-size:14px; line-height:1.6;
+  }
+  header{padding:18px 24px 10px; border-bottom:1px solid var(--line); background:var(--panel)}
+  header h1{margin:0 0 4px; font-size:19px}
+  header p{margin:0; color:var(--dim); font-size:13px}
+  .wrap{max-width:1500px; margin:0 auto; padding:18px 24px 60px}
+  .bar{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:16px}
+  input[type=text]{
+    background:#0d1117; border:1px solid var(--line); color:var(--txt);
+    padding:8px 12px; border-radius:8px; font-family:Consolas,monospace; width:340px; font-size:13px;
+  }
+  input[type=text]:focus{outline:none; border-color:var(--accent)}
+  select{
+    background:#0d1117; border:1px solid var(--line); color:var(--txt);
+    padding:8px 10px; border-radius:8px; font-family:Consolas,monospace; font-size:13px; cursor:pointer;
+  }
+  select:focus{outline:none; border-color:var(--accent)}
+  button{
+    background:var(--panel2); color:var(--txt); border:1px solid var(--line);
+    padding:8px 14px; border-radius:8px; cursor:pointer; font-size:13px; font-family:inherit;
+    transition:.15s;
+  }
+  button:hover:not(:disabled){border-color:var(--accent); color:#fff}
+  button:disabled{opacity:.38; cursor:not-allowed}
+  button.primary{background:#1f6feb; border-color:#1f6feb; color:#fff}
+  .pq{display:flex; gap:18px; align-items:center; flex-wrap:wrap; margin:0 0 16px; font-size:13px}
+  .pq .tag{font-weight:700; padding:2px 10px; border-radius:6px}
+  .tag.p{background:rgba(31,111,235,.25); color:#79c0ff; border:1px solid #1f6feb}
+  .tag.q{background:rgba(188,140,255,.15); color:var(--purple); border:1px solid var(--purple)}
+  .grid{display:grid; grid-template-columns: 1fr 400px; gap:16px; align-items:start}
+  @media (max-width:1100px){ .grid{grid-template-columns:1fr} }
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px}
+  .card h2{margin:0 0 12px; font-size:14px; color:var(--accent); letter-spacing:.5px}
+  #treeWrap{overflow-x:auto; padding:8px 0 4px; min-height:330px; display:flex; align-items:center; justify-content:center}
+  svg{display:block}
+  .n{cursor:pointer}
+  .n circle{transition:.2s}
+  .n text{font-size:15px; font-weight:600; text-anchor:middle; dominant-baseline:central; pointer-events:none}
+  .n .ret{font-size:11px; font-weight:600; fill:#0e1117}
+  .edge{stroke:#39424f; stroke-width:2; transition:.2s}
+  .edge.hot{stroke:var(--accent); stroke-width:3}
+  .edge.win{stroke:var(--green); stroke-width:3.5}
+  .code{font-family:Consolas,monospace; font-size:12.5px; line-height:1.75; background:#0d1117;
+        border:1px solid var(--line); border-radius:8px; padding:12px; overflow-x:auto}
+  .code .ln{display:block; padding:0 6px; border-left:3px solid transparent; color:#c9d1d9}
+  .code .ln.hl{background:rgba(88,166,255,.12); border-left-color:var(--accent)}
+  .stackrow{display:flex; gap:6px; flex-wrap:wrap; align-items:center; min-height:34px}
+  .chip{background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:4px 10px;
+        font-family:Consolas,monospace; font-size:13px}
+  .chip.act{border-color:var(--accent); background:rgba(88,166,255,.15); color:#fff}
+  .chip .sub{color:var(--dim); font-size:11px}
+  .big{font-size:26px; font-weight:700; font-family:Consolas,monospace; color:var(--green)}
+  .log{height:300px; overflow-y:auto; font-family:Consolas,monospace; font-size:12.5px; line-height:1.7}
+  .log .item{padding:2px 8px; border-radius:6px; color:var(--dim); white-space:pre-wrap}
+  .log .item.cur{background:rgba(88,166,255,.15); color:#fff}
+  .log .item.lca{color:var(--green)}
+  .kv{display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px dashed var(--line); font-size:13px}
+  .kv b{font-family:Consolas,monospace; color:#fff}
+  .ins{border-left:3px solid var(--purple); background:rgba(188,140,255,.07); padding:10px 12px;
+       border-radius:0 8px 8px 0; margin-bottom:10px; font-size:13px}
+  .ins b{color:var(--purple)}
+  .legend{display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--dim); margin-top:10px}
+  .legend i{display:inline-block; width:11px; height:11px; border-radius:50%; margin-right:5px; vertical-align:-1px}
+  .muted{color:var(--dim); font-size:12.5px}
+</style>
+</head>
+<body>
+<header>
+  <h1>LeetCode 236 · 二叉树的最近公共祖先 —— 递归"冒泡"可视化</h1>
+  <p>左边是树和递归执行过程，右边是代码逐行对照。核心就一句：<b>每个节点向上报告"我这棵子树里有谁"</b>，第一次两边都有货的节点就是答案。</p>
+</header>
+
+<div class="wrap">
+  <div class="bar">
+    <input type="text" id="treeIn" value="[3,5,1,6,2,0,8,null,null,7,4]" spellcheck="false">
+    <button class="primary" onclick="build()">渲染并重放</button>
+    <span class="muted">预设：</span>
+    <button onclick="preset('[3,5,1,6,2,0,8,null,null,7,4]',5,1)">经典 p=5,q=1</button>
+    <button onclick="preset('[3,5,1,6,2,0,8,null,null,7,4]',5,4)">祖先情形 p=5,q=4</button>
+    <button onclick="preset('[1,2,3]',2,3)">小树 p=2,q=3</button>
+    <button onclick="preset('[1,null,2,null,3]',1,3)">单链 p=1,q=3</button>
+  </div>
+
+  <div class="pq">
+    <span><span class="tag p">p</span></span>
+    <select id="selP" onchange="pickFromSelect()"></select>
+    <span><span class="tag q">q</span></span>
+    <select id="selQ" onchange="pickFromSelect()"></select>
+    <span class="muted">也可以直接点树上的节点：第一次点设 p，第二次点设 q，第三次起重新设 p</span>
+  </div>
+
+  <div class="grid">
+    <!-- 左列 -->
+    <div>
+      <div class="card">
+        <h2>① 树（每个节点标注"向上报告"的值）</h2>
+        <div id="treeWrap"></div>
+        <div class="legend">
+          <span><i style="background:#30363d;border:1px solid #484f58"></i>未访问</span>
+          <span><i style="background:#1f6feb"></i>p（目标之一）</span>
+          <span><i style="background:#a371f7"></i>q（目标之一）</span>
+          <span><i style="background:#2ea043;box-shadow:0 0 0 3px rgba(46,160,67,.35)"></i>答案 LCA</span>
+          <span><i style="background:#6e7681"></i>已返回（报告 null：这棵子树没货）</span>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h2>② 执行控制</h2>
+        <div class="bar" style="margin:0">
+          <button onclick="go(0)">⏮ 开头</button>
+          <button onclick="stepBy(-1)">◀ 上一步</button>
+          <button id="btnPlay" class="primary" onclick="togglePlay()">▶ 自动播放</button>
+          <button onclick="stepBy(1)">下一步 ▶</button>
+          <button onclick="go(1e9)">结尾 ⏭</button>
+          <span class="muted" id="prog"></span>
+          <span class="muted">← / → 单步</span>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:14px">
+          <div class="card" style="background:var(--panel2)">
+            <div class="muted">本节点向上报告</div>
+            <div class="big" id="retVal">—</div>
+          </div>
+          <div class="card" style="background:var(--panel2)">
+            <div class="muted">当前节点</div>
+            <div class="big" id="nodeVal" style="color:var(--purple)">—</div>
+          </div>
+          <div class="card" style="background:var(--panel2)">
+            <div class="muted">答案 LCA</div>
+            <div class="big" id="lcaVal">?</div>
+          </div>
+        </div>
+        <div style="margin-top:14px">
+          <div class="muted" style="margin-bottom:6px">调用栈（从 root 到当前节点）</div>
+          <div class="stackrow" id="stack"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h2>③ 代码逐行对照</h2>
+        <div class="code" id="code"></div>
+      </div>
+    </div>
+
+    <!-- 右列 -->
+    <div>
+      <div class="card">
+        <h2>本次执行发生了什么</h2>
+        <div id="explain" class="muted" style="min-height:60px">点击“下一步”开始。</div>
+        <div class="kv" style="margin-top:10px"><span>左子树报告</span><b id="kvLeft">—</b></div>
+        <div class="kv"><span>右子树报告</span><b id="kvRight">—</b></div>
+        <div class="kv"><span>本节点结论</span><b id="kvUp">—</b></div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h2>事件日志</h2>
+        <div class="log" id="log"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h2>④ 为什么这样写（"报告-冒泡"模型）</h2>
+    <div class="grid" style="grid-template-columns:1fr 1fr">
+      <div>
+        <div class="ins"><b>每个 dfs 返回的语义</b><br>
+          “我这棵子树里有谁”：只可能是四种答案——<code>null</code>（没货）、<code>p</code>（只有 p）、<code>q</code>（只有 q）、<code>LCA</code>（p 和 q 都在下面，答案已找到）。整个算法就是把这句话从叶子一路冒泡到根。
+        </div>
+        <div class="ins"><b>base case 三合一</b><br>
+          <code>root == null</code> → 报告 null（这条路没货）。<code>root == p/q</code> → 报告自己，不再往下找——因为另一个目标要么在自己子树里（祖先情形），要么根本不在这条路，两种情况都无需继续，都由上层用"另一边是否为 null"自动分辨。
+        </div>
+      </div>
+      <div>
+        <div class="ins"><b>分叉点 = 答案（整棵树恰好出现一次）</b><br>
+          当且仅当左、右报告都非空，p 和 q 分居两侧，当前节点就是最近公共祖先。之后它作为一个整体继续往上冒，上层只会看到一边非空，不会再产生第二个分叉点。
+        </div>
+        <div class="ins"><b>p 是 q 的祖先时为什么也成立</b><br>
+          第一次遇到 p 就直接返回 p（根本不去找 q，q 就藏在 p 的子树里）。一路往上冒：p 所在链上，另一边永远是 null，于是 p 被原样递到根。如果 q 不在 p 子树里呢？那 q 一定在"另一边"的某条链上，分叉点会出现在 p 和 q 真正分开的那个祖先——算法不关心谁是谁的祖先，统一处理。
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------------- 树构建（层序） ---------------- */
+let uid = 0;
+function buildTree(tokens){
+  if(!tokens.length || tokens[0] === null) return null;
+  uid = 0;
+  const root = {val:tokens[0], id:uid++, left:null, right:null, depth:0, x:0};
+  const q = [root];
+  let i = 1;
+  while(q.length){
+    const n = q.shift();
+    for(const key of ['left','right']){
+      if(i >= tokens.length){ q.length = 0; break; }
+      const t = tokens[i++];
+      if(t !== null){ n[key] = {val:t, id:uid++, left:null, right:null, depth:0, x:0}; q.push(n[key]); }
+    }
+  }
+  return root;
+}
+function parseIn(s){
+  return s.replace(/\[|\]/g,'').split(',').map(x=>x.trim())
+          .filter(x=>x.length).map(x => (x==='null'||x==='undefined') ? null : parseInt(x,10));
+}
+function preset(s, p, q){ document.getElementById('treeIn').value = s; buildByValue(p, q); }
+function bfs(root){
+  const out = []; const q = [root];
+  while(q.length){ const n = q.shift(); if(!n) continue; out.push(n); q.push(n.left, n.right); }
+  return out;
+}
+
+/* ---------------- p/q 选择 ---------------- */
+let pId = null, qId = null;
+function fillSelects(root){
+  const selP = document.getElementById('selP'), selQ = document.getElementById('selQ');
+  const list = bfs(root);
+  const opts = list.map(n=>`<option value="${n.id}">${n.val} (#${n.id})</option>`).join('');
+  selP.innerHTML = opts; selQ.innerHTML = opts;
+  selP.value = String(pId); selQ.value = String(qId);
+}
+function pickFromSelect(){
+  pId = +document.getElementById('selP').value;
+  qId = +document.getElementById('selQ').value;
+  rerun();
+}
+function clickNode(id){
+  if(pId === null || (pId !== null && qId !== null)){ pId = id; qId = null; }
+  else if(id !== pId){ qId = id; }
+  document.getElementById('selP').value = String(pId);
+  if(qId !== null) document.getElementById('selQ').value = String(qId);
+  rerun();
+}
+function defaultPQ(root){
+  if(root.left && root.right){ pId = root.left.id; qId = root.right.id; }
+  else { const list = bfs(root); pId = list.length ? list[0].id : null; qId = list.length > 1 ? list[1].id : null; }
+}
+
+/* ---------------- 插桩 DFS（与题解代码逐行对应） ---------------- */
+let events = [], nodes = [], byId = {}, lcaId = null, lcaVal = null;
+function label(id){
+  if(id === null || id === undefined) return 'null';
+  const n = byId[id];
+  if(id === lcaId) return `LCA=${n.val}`;   // 祖先情形下 LCA 就是 p/q 本身，优先显示
+  if(id === pId && id === qId) return `p=q=${n.val}`;
+  if(id === pId) return `p=${n.val}`;
+  if(id === qId) return `q=${n.val}`;
+  return `${n.val}`;   // 理论上到不了：返回值只可能是 p / q / LCA / null
+}
+function trace(root){
+  events = []; lcaId = null; lcaVal = null;
+  const live = [];
+  const dfs = (n) => {
+    if(n === null) return null;   // 防御；页面只在真实节点上调用
+    live.push(n.id);
+    const isBase = (n.id === pId || n.id === qId);
+    events.push({type:'enter', id:n.id, stack:live.slice(), base:isBase,
+                 note: isBase ? `进入 dfs(${n.val})：命中${n.id===pId?' p':' q'}，直接返回自己，不再往下找`
+                              : `进入 dfs(${n.val})`});
+    let ret, L = null, R = null, kind;
+    if(isBase){
+      ret = n.id; kind = 'base';
+    } else {
+      L = n.left ? dfs(n.left) : null;
+      R = n.right ? dfs(n.right) : null;
+      live.pop();
+      if(L !== null && R !== null){ ret = n.id; kind = 'fork'; lcaId = n.id; lcaVal = n.val; }
+      else { ret = (L !== null) ? L : R; kind = 'bubble'; }
+    }
+    if(isBase) live.pop();
+    const verdict = kind==='base' ? `命中目标，报告自己`
+                  : kind==='fork' ? `左右都有货 → 我是分叉点，报告自己 ★LCA`
+                  : (ret===null ? '两边都没货 → 报告 null'
+                                : `只有一边有货 → 把 ${label(ret)} 原样递上去`);
+    events.push({type:'exit', id:n.id, stack:live.concat([n.id]), L, R, ret, kind,
+                 fork: kind==='fork',
+                 note:`dfs(${n.val})：左=${label(L)}，右=${label(R)} → ${verdict}`});
+    return ret;
+  };
+  const result = dfs(root);
+  // root 的返回值就是答案（分叉点返回自己、祖先情形返回 p/q 本身，都在这里统一）
+  lcaId = result; lcaVal = byId[result].val;
+  events.push({type:'done', id:null, stack:[], ans:result,
+               note:`遍历结束，LCA(p=${byId[pId].val}, q=${byId[qId].val}) = ${byId[result].val}`});
+  return result;
+}
+
+/* ---------------- 布局 + SVG（中序编号） ---------------- */
+function layout(root){
+  nodes = []; byId = {}; let c = 0;
+  (function walk(n, d){
+    if(!n) return;
+    n.depth = d;
+    walk(n.left, d+1);
+    n.x = c++ * 70;
+    nodes.push(n); byId[n.id] = n;
+    walk(n.right, d+1);
+  })(root, 0);
+  return root;
+}
+function draw(root){
+  const wrap = document.getElementById('treeWrap');
+  if(!root){ wrap.innerHTML = '<div class="muted">空树</div>'; return; }
+  const maxDepth = Math.max(...nodes.map(n=>n.depth));
+  const maxX = Math.max(...nodes.map(n=>n.x));
+  const W = maxX + 40 + 70, H = (maxDepth + 1) * 92 + 30;
+  let s = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`;
+  const px = n => n.x + 35, py = n => n.depth * 92 + 42;
+  for(const n of nodes){
+    if(n.left)  s += `<line class="edge" data-from="${n.id}" data-to="${n.left.id}"  x1="${px(n)}" y1="${py(n)}" x2="${px(n.left)}" y2="${py(n.left)}"/>`;
+    if(n.right) s += `<line class="edge" data-from="${n.id}" data-to="${n.right.id}" x1="${px(n)}" y1="${py(n)}" x2="${px(n.right)}" y2="${py(n.right)}"/>`;
+  }
+  for(const n of nodes){
+    s += `<g class="n" data-id="${n.id}" transform="translate(${px(n)},${py(n)})" onclick="clickNode(${n.id})">`;
+    s += `<circle r="21" fill="#30363d" stroke="#484f58" stroke-width="2"/>`;
+    s += `<text y="-1" fill="#e6edf3">${n.val}</text>`;
+    s += `<rect class="retbg" x="-23" y="26" width="46" height="17" rx="8" fill="#30363d" opacity="0"/>`;
+    s += `<text class="ret" y="34" text-anchor="middle" dominant-baseline="central"></text>`;
+    s += `</g>`;
+  }
+  s += '</svg>';
+  wrap.innerHTML = s;
+}
+
+/* ---------------- 答案路径（p→LCA 与 q→LCA） ---------------- */
+function ancestors(id){
+  const chain = []; let cur = byId[id];
+  while(cur){ chain.push(cur); if(cur.id === lcaId) break; cur = parentOf(cur); }
+  return chain;
+}
+function parentOf(n){
+  for(const m of nodes) if(m.left === n || m.right === n) return m;
+  return null;
+}
+let winIds = new Set();
+function computeWin(){
+  winIds = new Set();
+  if(lcaId === null) return;
+  for(const id of [pId, qId]) for(const n of ancestors(id)) winIds.add(n.id);
+}
+
+/* ---------------- 代码 ---------------- */
+const CODE = [
+  'public TreeNode lowestCommonAncestor(TreeNode root, TreeNode p, TreeNode q){',
+  '  if(root == p || root == q || root == null) return root;',
+  '  TreeNode left  = lowestCommonAncestor(root.left, p, q);',
+  '  TreeNode right = lowestCommonAncestor(root.right, p, q);',
+  '  if(left != null && right != null) return root;   // 分叉点 = 答案',
+  '  return left != null ? left : right;              // 冒泡：把有货的一边递上去',
+  '}'
+];
+function renderCode(lines){
+  document.getElementById('code').innerHTML =
+    CODE.map((t,i)=>`<span class="ln${lines.includes(i+1)?' hl':''}">${i+1}: ${esc(t)}</span>`).join('');
+}
+const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+/* ---------------- 播放控制 ---------------- */
+let root = null, idx = 0, timer = null, states = [];
+/* 渲染按钮 / 首次加载：保留已有 p/q 选择（若仍有效），否则取默认 */
+function build(){
+  uid = 0;
+  root = buildTree(parseIn(document.getElementById('treeIn').value));
+  if(!root){ draw(null); document.getElementById('selP').innerHTML=''; document.getElementById('selQ').innerHTML='';
+             document.getElementById('prog').textContent=''; return; }
+  layout(root);
+  draw(root);
+  const list = bfs(root);
+  const ok = id => list.some(n=>n.id===id);
+  if(!ok(pId) || !ok(qId)) defaultPQ(root);
+  fillSelects(root);
+  rerun();
+}
+/* 预设按钮：按节点"值"指定 p/q */
+function buildByValue(forceP, forceQ){
+  uid = 0;
+  root = buildTree(parseIn(document.getElementById('treeIn').value));
+  if(!root){ draw(null); return; }
+  layout(root);
+  draw(root);
+  const list = bfs(root);
+  const byVal = v => { const h = list.find(n=>n.val===v); return h ? h.id : null; };
+  pId = byVal(forceP); qId = byVal(forceQ);
+  if(pId === null || qId === null) defaultPQ(root);
+  fillSelects(root);
+  rerun();
+}
+function rerun(){
+  if(!root || pId === null || qId === null) return;
+  trace(root);
+  computeWin();
+  buildStates();
+  idx = 0; render();
+}
+function buildStates(){
+  const done = {}, ret = {};
+  const out = [ {done:{}, ret:{}, cur:null, ev:null} ];
+  for(const e of events){
+    if(e.type === 'exit'){ done[e.id] = true; ret[e.id] = e.ret; }
+    out.push({done:{...done}, ret:{...ret}, cur:(e.type==='done'?null:e.id), ev:e});
+  }
+  states = out;
+}
+function go(i){ stop(); idx = Math.max(0, Math.min(states.length-1, i)); render(); }
+function stepBy(d){ stop(); go(idx + d); }
+/* ← / → 单步（输入框、下拉框聚焦时不劫持，保证能正常编辑） */
+document.addEventListener('keydown', (ev)=>{
+  const tag = (document.activeElement && document.activeElement.tagName) || '';
+  if(tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+  if(ev.key === 'ArrowLeft'){ ev.preventDefault(); stepBy(-1); }
+  else if(ev.key === 'ArrowRight'){ ev.preventDefault(); stepBy(1); }
+});
+function togglePlay(){
+  if(timer){ stop(); return; }
+  document.getElementById('btnPlay').textContent = '⏸ 暂停';
+  timer = setInterval(()=>{ if(idx >= states.length-1){ stop(); return; } go(idx + 1); }, 750);
+  go(idx + 1);
+}
+function stop(){
+  if(timer){ clearInterval(timer); timer = null; }
+  document.getElementById('btnPlay').textContent = '▶ 自动播放';
+}
+
+function badgeText(id, selfId){
+  if(id === null || id === undefined) return 'null';
+  if(id === lcaId) return (selfId === lcaId) ? 'LCA' : '↑LCA';   // 自己 vs 往上递
+  if(id === pId && id === qId) return 'p=q';
+  if(id === pId) return '↑p';
+  if(id === qId) return '↑q';
+  return '↑' + byId[id].val;
+}
+function badgeFill(id){
+  if(id === null || id === undefined) return '#6e7681';
+  if(id === lcaId) return '#2ea043';
+  if(id === pId) return '#1f6feb';
+  if(id === qId) return '#a371f7';
+  return '#3fb950';
+}
+
+function render(){
+  const st = states[idx] || states[0];
+  const e = st.ev;
+  for(const n of nodes){
+    const g = document.querySelector(`.n[data-id="${n.id}"]`);
+    if(!g) continue;
+    const c = g.querySelector('circle'), t = g.querySelector('text');
+    const badge = g.querySelector('rect.retbg'), bt = g.querySelector('text.ret');
+    let fill = '#30363d', stroke = '#484f58', color = '#e6edf3';
+    // 身份底色
+    if(n.id === pId && n.id === qId){ fill = '#1f6feb'; }
+    else if(n.id === pId){ fill = '#1f6feb'; }
+    else if(n.id === qId){ fill = '#a371f7'; color = '#0e1117'; }
+    if(winIds.has(n.id)){ fill = '#1a7f37'; stroke = '#2ea043'; color = '#e6edf3'; }
+    if(st.done[n.id] && !winIds.has(n.id)){
+      fill = (st.ret[n.id] === null) ? '#4b5563' : '#238636';
+      stroke = (st.ret[n.id] === null) ? '#6e7681' : '#3fb950';
+    }
+    if(e && e.type !== 'done' && e.id === n.id){
+      stroke = '#ffffff'; c.setAttribute('stroke-width', 3);
+    } else {
+      c.setAttribute('stroke-width', 2);
+    }
+    c.setAttribute('fill', fill); c.setAttribute('stroke', stroke);
+    t.setAttribute('fill', color);
+    if(st.done[n.id]){
+      const r = st.ret[n.id];
+      badge.setAttribute('opacity', 1); badge.setAttribute('fill', badgeFill(r));
+      bt.textContent = badgeText(r, n.id);
+    } else { badge.setAttribute('opacity', 0); bt.textContent = ''; }
+  }
+  for(const line of document.querySelectorAll('.edge')){
+    line.classList.remove('hot','win');
+    if(winIds.has(+line.dataset.to) && winIds.has(+line.dataset.from)) line.classList.add('win');
+  }
+  const activeNode = (e && e.id != null) ? byId[e.id] : null;
+  if(activeNode){
+    for(const line of document.querySelectorAll('.edge')){
+      if(+line.dataset.from === e.id || +line.dataset.to === e.id) line.classList.add('hot');
+    }
+  }
+
+  document.getElementById('retVal').textContent = (e && e.type==='exit') ? label(e.ret) : '—';
+  const retBig = document.getElementById('retVal');
+  if(e && e.type === 'exit'){
+    retBig.style.color = (e.ret === lcaId || e.kind === 'fork') ? 'var(--green)'
+                       : (e.ret === null) ? 'var(--dim)' : 'var(--accent)';
+  } else retBig.style.color = 'var(--green)';
+  document.getElementById('nodeVal').textContent = activeNode ? activeNode.val : '—';
+  document.getElementById('lcaVal').textContent = (e && e.type === 'done') ? lcaVal : '?';
+  document.getElementById('prog').textContent = `第 ${idx} / ${states.length-1} 步`;
+
+  const stack = e ? e.stack : [];
+  document.getElementById('stack').innerHTML = stack.length
+    ? stack.map((id,k)=>{
+        const n = byId[id], act = (k === stack.length-1);
+        const sub = (st.done && st.done[id]) ? label(st.ret[id]) : '…';
+        return `<div class="chip ${act?'act':''}">${n.val}<span class="sub"> ${sub}</span></div>`
+             + (k<stack.length-1 ? '<span class="muted">›</span>' : '');
+      }).join('')
+    : '<span class="muted">（空 / 已全部返回）</span>';
+
+  const ex = document.getElementById('explain');
+  if(!e){ ex.textContent = '点击“下一步”开始。';
+    document.getElementById('kvLeft').textContent='—'; document.getElementById('kvRight').textContent='—';
+    document.getElementById('kvUp').textContent='—'; }
+  else if(e.type === 'enter'){
+    ex.innerHTML = e.base
+      ? `<b style="color:#58a6ff">${e.note}</b><br>base case：第 2 行直接返回，不产生左右子调用。`
+      : `<b style="color:#58a6ff">${e.note}</b><br>不是 p/q，先去左子树要报告（第 3 行），再去右子树（第 4 行）。`;
+    document.getElementById('kvLeft').textContent='等待子调用';
+    document.getElementById('kvRight').textContent='等待子调用';
+    document.getElementById('kvUp').textContent='—';
+  } else if(e.type === 'exit'){
+    ex.innerHTML = `<b style="color:#58a6ff">${e.note}</b>`
+      + (e.kind === 'fork'
+          ? `<br><span style="color:#3fb950">★ 左=${label(e.L)} 且右=${label(e.R)} 都非空——第 5 行，分叉点就是答案！</span>`
+          : e.kind === 'base' ? `<br>第 2 行 base case。`
+          : `<br>第 6 行：只有一边有货，原样往上递。`);
+    document.getElementById('kvLeft').textContent = label(e.L);
+    document.getElementById('kvRight').textContent = label(e.R);
+    document.getElementById('kvUp').textContent = (e.kind==='fork' ? '报告自己 ★LCA' : '报告 ' + label(e.ret));
+  } else {
+    ex.innerHTML = `<b style="color:#3fb950">${e.note}</b><br>绿色路径是 p、q 各自到 LCA 的上行路线——分叉点两侧各一条。`;
+    document.getElementById('kvLeft').textContent='—'; document.getElementById('kvRight').textContent='—';
+    document.getElementById('kvUp').textContent='—';
+  }
+
+  let hl = [];
+  if(e && e.type === 'enter') hl = e.base ? [2] : [1,3,4];
+  else if(e && e.type === 'exit') hl = e.kind==='base' ? [2] : (e.kind==='fork' ? [5] : [6]);
+  else if(e && e.type === 'done') hl = [5,6];
+  renderCode(hl);
+
+  const log = document.getElementById('log');
+  const doneCount = Math.max(0, idx - 1);
+  log.innerHTML = events.slice(0, doneCount).map((x,i)=>
+    `<div class="item ${x.type==='exit'&&x.fork?'lca':''}">${i+1}. ${x.note}</div>`).join('')
+    + (e ? `<div class="item cur ${e.type==='exit'&&e.fork?'lca':''}">${doneCount+1}. ${e.note}</div>` : '');
+  const cur = log.querySelector('.cur');
+  if(cur) cur.scrollIntoView({block:'nearest'});
+}
+
+build();
+</script>
+</body>
+</html>

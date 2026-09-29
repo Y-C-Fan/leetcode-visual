@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LeetCode 124 二叉树中的最大路径和 · 可视化理解</title>
+<style>
+  :root{
+    --bg:#0e1117; --panel:#161b22; --panel2:#1c2230; --line:#2b3444;
+    --txt:#e6edf3; --dim:#8b949e; --accent:#58a6ff; --green:#3fb950;
+    --red:#f85149; --amber:#d29922; --purple:#bc8cff;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--txt);
+    font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+    font-size:14px; line-height:1.6;
+  }
+  header{padding:18px 24px 10px; border-bottom:1px solid var(--line); background:var(--panel)}
+  header h1{margin:0 0 4px; font-size:19px}
+  header p{margin:0; color:var(--dim); font-size:13px}
+  .wrap{max-width:1500px; margin:0 auto; padding:18px 24px 60px}
+  .bar{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:16px}
+  input[type=text]{
+    background:#0d1117; border:1px solid var(--line); color:var(--txt);
+    padding:8px 12px; border-radius:8px; font-family:Consolas,monospace; width:340px; font-size:13px;
+  }
+  input[type=text]:focus{outline:none; border-color:var(--accent)}
+  button{
+    background:var(--panel2); color:var(--txt); border:1px solid var(--line);
+    padding:8px 14px; border-radius:8px; cursor:pointer; font-size:13px; font-family:inherit;
+    transition:.15s;
+  }
+  button:hover:not(:disabled){border-color:var(--accent); color:#fff}
+  button:disabled{opacity:.38; cursor:not-allowed}
+  button.primary{background:#1f6feb; border-color:#1f6feb; color:#fff}
+  .grid{display:grid; grid-template-columns: 1fr 400px; gap:16px; align-items:start}
+  @media (max-width:1100px){ .grid{grid-template-columns:1fr} }
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px}
+  .card h2{margin:0 0 12px; font-size:14px; color:var(--accent); letter-spacing:.5px}
+  #treeWrap{overflow-x:auto; padding:8px 0 4px; min-height:330px; display:flex; align-items:center; justify-content:center}
+  svg{display:block}
+  .n circle{transition:.2s}
+  .n text{font-size:15px; font-weight:600; text-anchor:middle; dominant-baseline:central; pointer-events:none}
+  .n .ret{font-size:11px; font-weight:600; fill:#0e1117}
+  .n .retbg{transition:.2s}
+  .edge{stroke:#39424f; stroke-width:2; transition:.2s}
+  .edge.hot{stroke:var(--accent); stroke-width:3}
+  .edge.win{stroke:var(--green); stroke-width:3.5}
+  .statebox{font-size:12px; padding:2px 8px; border-radius:20px; display:inline-block; margin-top:8px}
+  .code{font-family:Consolas,monospace; font-size:12.5px; line-height:1.75; background:#0d1117;
+        border:1px solid var(--line); border-radius:8px; padding:12px; overflow-x:auto}
+  .code .ln{display:block; padding:0 6px; border-left:3px solid transparent; color:#c9d1d9}
+  .code .ln.hl{background:rgba(88,166,255,.12); border-left-color:var(--accent)}
+  .stackrow{display:flex; gap:6px; flex-wrap:wrap; align-items:center; min-height:34px}
+  .chip{background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:4px 10px;
+        font-family:Consolas,monospace; font-size:13px}
+  .chip.act{border-color:var(--accent); background:rgba(88,166,255,.15); color:#fff}
+  .chip .sub{color:var(--dim); font-size:11px}
+  .big{font-size:34px; font-weight:700; font-family:Consolas,monospace; color:var(--green)}
+  .log{height:300px; overflow-y:auto; font-family:Consolas,monospace; font-size:12.5px; line-height:1.7}
+  .log .item{padding:2px 8px; border-radius:6px; color:var(--dim); white-space:pre-wrap}
+  .log .item.cur{background:rgba(88,166,255,.15); color:#fff}
+  .log .item.upd{color:var(--green)}
+  .kv{display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px dashed var(--line); font-size:13px}
+  .kv b{font-family:Consolas,monospace; color:#fff}
+  .ins{border-left:3px solid var(--purple); background:rgba(188,140,255,.07); padding:10px 12px;
+       border-radius:0 8px 8px 0; margin-bottom:10px; font-size:13px}
+  .ins b{color:var(--purple)}
+  .legend{display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--dim); margin-top:10px}
+  .legend i{display:inline-block; width:11px; height:11px; border-radius:50%; margin-right:5px; vertical-align:-1px}
+  table{width:100%; border-collapse:collapse; font-size:13px}
+  th,td{border:1px solid var(--line); padding:6px 9px; text-align:left}
+  th{background:var(--panel2); color:var(--accent); font-weight:600}
+  .muted{color:var(--dim); font-size:12.5px}
+</style>
+</head>
+<body>
+<header>
+  <h1>LeetCode 124 · 二叉树中的最大路径和 —— 单函数递归可视化</h1>
+  <p>左边是树和递归执行过程，右边是代码逐行对照。核心只有两件事：<b>在哪里"拐弯"</b>，<b>能带什么往上走</b>。</p>
+</header>
+
+<div class="wrap">
+  <div class="bar">
+    <input type="text" id="treeIn" value="[-10,9,20,null,null,15,7]" spellcheck="false">
+    <button class="primary" onclick="build()">渲染并重放</button>
+    <span class="muted">预设：</span>
+    <button onclick="preset('[-10,9,20,null,null,15,7]')">经典 −10/9/20</button>
+    <button onclick="preset('[1,2,3]')">简单 1/2/3</button>
+    <button onclick="preset('[-3]')">单个负数</button>
+    <button onclick="preset('[2,-1,-1,3,1,1,0]')">多个岔路</button>
+  </div>
+
+  <div class="grid">
+    <!-- 左列 -->
+    <div>
+      <div class="card">
+        <h2>① 树（带 DFS 返回值标注）</h2>
+        <div id="treeWrap"></div>
+        <div class="legend">
+          <span><i style="background:#30363d;border:1px solid #484f58"></i>未访问</span>
+          <span><i style="background:#1f6feb"></i>正在访问</span>
+          <span><i style="background:#238636"></i>已返回（贡献被采用）</span>
+          <span><i style="background:#6e7681"></i>已返回（被丢弃 = 负数剪枝）</span>
+          <span><i style="background:#2ea043;box-shadow:0 0 0 3px rgba(46,160,67,.35)"></i>最终答案路径</span>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h2>② 执行控制</h2>
+        <div class="bar" style="margin:0">
+          <button onclick="go(0)">⏮ 开头</button>
+          <button id="btnPrev" onclick="stepBy(-1)">◀ 上一步</button>
+          <button id="btnPlay" class="primary" onclick="togglePlay()">▶ 自动播放</button>
+          <button id="btnNext" onclick="stepBy(1)">下一步 ▶</button>
+          <button onclick="go(1e9)">结尾 ⏭</button>
+          <span class="muted" id="prog"></span>
+          <span class="muted">← / → 单步</span>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:14px">
+          <div class="card" style="background:var(--panel2)">
+            <div class="muted">全局 ans</div>
+            <div class="big" id="ansVal">-2147483648</div>
+          </div>
+          <div class="card" style="background:var(--panel2)">
+            <div class="muted">当前 dfs 返回值</div>
+            <div class="big" id="retVal" style="color:var(--accent)">—</div>
+          </div>
+          <div class="card" style="background:var(--panel2)">
+            <div class="muted">当前节点</div>
+            <div class="big" id="nodeVal" style="color:var(--purple)">—</div>
+          </div>
+        </div>
+        <div style="margin-top:14px">
+          <div class="muted" style="margin-bottom:6px">调用栈（从 root 到当前节点）</div>
+          <div class="stackrow" id="stack"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h2>③ 代码逐行对照</h2>
+        <div class="code" id="code"></div>
+      </div>
+    </div>
+
+    <!-- 右列 -->
+    <div>
+      <div class="card">
+        <h2>本次执行发生了什么</h2>
+        <div id="explain" class="muted" style="min-height:60px">点击“下一步”开始。</div>
+        <div class="kv" style="margin-top:10px"><span>此刻 left（取 max 0 后）</span><b id="kvLeft">—</b></div>
+        <div class="kv"><span>此刻 right（取 max 0 后）</span><b id="kvRight">—</b></div>
+        <div class="kv"><span>候选 val+left+right</span><b id="kvCand">—</b></div>
+        <div class="kv"><span>交给父亲的一边</span><b id="kvUp">—</b></div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h2>事件日志</h2>
+        <div class="log" id="log"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h2>④ 为什么这样写（两个关键决策）</h2>
+    <div class="grid" style="grid-template-columns:1fr 1fr">
+      <div>
+        <div class="ins"><b>决策 A：ans 更新用 left + right（两边都要）</b><br>
+          路径经过当前节点时，父节点只需要 <i>一条</i> 链往下走，但当前节点自己可以同时接住左子树最优链和右子树最优链，拼成一条<b>完整路径</b>。
+          所以 <code>ans = max(ans, val + left + right)</code>，这里就是路径的“拐点”或“山顶”。<br>
+          <span class="muted">整棵树里被这样更新到最大值的那个节点，就是答案路径的拐点。</span>
+        </div>
+        <div class="ins"><b>决策 B：返回值只取一边 <code>val + max(left, right)</code></b><br>
+          向上返回的语义是：“<b>以我为端点、向下延伸的最长链</b>”。一条链只有一个方向能继续，所以只能二选一。
+          若把两边都返回上去，返回的就不再是“链”而是“分叉的树”，父节点拼出来的路径会重复经过子树，答案会错。
+        </div>
+      </div>
+      <div>
+        <div class="ins"><b>为什么要 <code>Math.max(0, dfs(...))</code></b><br>
+          子树返回的负数代表“从我往那边走会拖低总和”。路径可以不往那边拐，所以直接归零。
+          好处是全树 <code>val + max(left,right)</code> 天然非负，只有根节点可能为负——这也解释了为什么 <code>ans</code> 必须初始化成 <code>Integer.MIN_VALUE</code> 而不能是 0
+          （否则 <code>[-3]</code> 会答 0）。
+        </div>
+        <div class="ins"><b>整体形状</b><br>
+          一次后序遍历 + 一个全局变量，<b>O(n) 时间、O(h) 递归栈</b>。
+          每个节点做两件互不冲突的事：<i>向上贡献一条链</i>，<i>同时把自己拼成一条完整路径参与 ans 竞争</i>。
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------------- 树构建 ---------------- */
+let uid = 0;
+function buildTree(tokens){
+  if(!tokens.length || tokens[0] === null) return null;
+  uid = 0;
+  const root = {val:tokens[0], id:uid++, left:null, right:null, depth:0, x:0};
+  const q = [root];
+  let i = 1;
+  while(q.length){
+    const n = q.shift();
+    for(const key of ['left','right']){
+      if(i >= tokens.length){ q.length = 0; i = tokens.length; break; }
+      const t = tokens[i++];
+      if(t !== null){ n[key] = {val:t, id:uid++, left:null, right:null, depth:0, x:0}; q.push(n[key]); }
+    }
+  }
+  return root;
+}
+function parseIn(s){
+  return s.replace(/\[|\]/g,'').split(',').map(x=>x.trim())
+          .filter(x=>x.length).map(x => (x==='null'||x==='undefined') ? null : parseInt(x,10));
+}
+function preset(s){ document.getElementById('treeIn').value = s; build(); }
+
+/* ---------------- 插桩 DFS，生成事件流 ---------------- */
+let events = [], nodes = [], byId = {}, bestPath = [];
+function trace(root){
+  events = []; let ans = -2147483648;
+  const liveStack = [];   // 手动维护栈，保证事件里的 stack 是"进入时"的正确快照
+  const dfs = (n) => {
+    if(n === null) return 0;
+    liveStack.push(n.id);
+    events.push({type:'enter', id:n.id, stack:liveStack.slice(), note:`进入 dfs(${n.val})`});
+    const rawL = dfs(n.left);
+    const rawR = dfs(n.right);
+    liveStack.pop();
+    const L = Math.max(0, rawL), R = Math.max(0, rawR);
+    const cand = n.val + L + R;
+    const up  = n.val + Math.max(L, R);
+    const prev = ans;
+    ans = Math.max(ans, cand);
+    events.push({type:'exit', id:n.id, stack:liveStack.concat([n.id]), rawL, rawR, L, R, cand, up,
+                 val:n.val, prev, ans, changed:ans!==prev,
+                 note:`dfs(${n.val})：候选 ${cand}${cand>prev?'  ★刷新 ans':''} → 返回 ${up}`});
+    return up;
+  };
+  const result = dfs(root);
+  events.push({type:'done', id:null, stack:[], ans,
+               note:`遍历结束，maxPathSum = ${ans}（注意：root 的返回值是 ${result}，那只是"一条链"，不是答案）`});
+  return result;
+}
+
+/* ---------------- 找出答案路径（拐点 + 两侧） ---------------- */
+/* prepare: 一次后序遍历算出每个节点的向下最优链 _down，
+   并记下"当时代码选了哪个孩子" _pick —— 这样回溯路径与 down 的定义 100% 一致 */
+function prepare(n){
+  if(!n) return 0;
+  const l = prepare(n.left), r = prepare(n.right);
+  n._dl = l; n._dr = r;
+  n._down = n.val + Math.max(l, r);
+  n._pick = (l >= r) ? n.left : n.right;
+  return n._down;
+}
+
+function findBestPath(root, best){
+  if(root === null) return [];
+  const L = Math.max(0, root._dl), R = Math.max(0, root._dr);
+  if(root.val + L + R === best){
+    // 沿 _pick 一路下钻，得到的链之和恰好等于 _down（不多不少）
+    const down = (start) => { const cur=[]; let n=start; while(n){ cur.push(n); n=n._pick; } return cur; };
+    const lp = (L > 0) ? down(root.left).reverse() : [];   // 反转成"叶子 → 拐点"
+    const rp = (R > 0) ? down(root.right) : [];
+    return lp.concat([root]).concat(rp);
+  }
+  const bl = findBestPath(root.left, best);
+  if(bl.length) return bl;
+  return findBestPath(root.right, best);
+}
+function subtreeMax(n){
+  if(!n) return -Infinity;
+  return Math.max(subtreeMax(n.left), subtreeMax(n.right), n.val + Math.max(0, n._dl) + Math.max(0, n._dr));
+}
+
+/* ---------------- 布局 + SVG ---------------- */
+/* 中序编号布局：保证节点不重叠，且天然呈现 BST 的形状 */
+function layout(root){
+  nodes = []; byId = {}; let c = 0;
+  (function walk(n, d){
+    if(!n) return;
+    n.depth = d;
+    walk(n.left, d+1);
+    n.x = c++ * 70;
+    nodes.push(n); byId[n.id] = n;
+    walk(n.right, d+1);
+  })(root, 0);
+  return root;
+}
+function draw(root){
+  const wrap = document.getElementById('treeWrap');
+  if(!root){ wrap.innerHTML = '<div class="muted">空树</div>'; return; }
+  const maxDepth = Math.max(...nodes.map(n=>n.depth));
+  const maxX = Math.max(...nodes.map(n=>n.x));
+  const W = maxX + 40 + 70, H = (maxDepth + 1) * 92 + 30;
+  let s = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`;
+  const px = n => n.x + 35, py = n => n.depth * 92 + 42;
+  for(const n of nodes){
+    if(n.left)  s += `<line class="edge" data-from="${n.id}" data-to="${n.left.id}"  x1="${px(n)}" y1="${py(n)}" x2="${px(n.left)}" y2="${py(n.left)}"/>`;
+    if(n.right) s += `<line class="edge" data-from="${n.id}" data-to="${n.right.id}" x1="${px(n)}" y1="${py(n)}" x2="${px(n.right)}" y2="${py(n.right)}"/>`;
+  }
+  for(const n of nodes){
+    s += `<g class="n" data-id="${n.id}" transform="translate(${px(n)},${py(n)})">`;
+    s += `<circle r="21" fill="#30363d" stroke="#484f58" stroke-width="2"/>`;
+    s += `<text y="-1" fill="#e6edf3">${n.val}</text>`;
+    s += `<rect class="retbg" x="-19" y="26" width="38" height="17" rx="8" fill="#30363d" opacity="0"/>`;
+    s += `<text class="ret" y="34" text-anchor="middle" dominant-baseline="central"></text>`;
+    s += `</g>`;
+  }
+  s += '</svg>';
+  wrap.innerHTML = s;
+}
+
+/* ---------------- 代码高亮映射 ---------------- */
+const CODE = [
+  'public int dfs(TreeNode root){',
+  '  if(root == null) return 0;',
+  '  int left  = Math.max(0, dfs(root.left));',
+  '  int right = Math.max(0, dfs(root.right));',
+  '  ans = Math.max(ans, root.val + left + right);   // 决策A：两边都收，找“拐点”',
+  '  return root.val + Math.max(left, right);      // 决策B：只挑一边往上给',
+  '}'
+];
+function renderCode(lines){
+  document.getElementById('code').innerHTML =
+    CODE.map((t,i)=>`<span class="ln${lines.includes(i+1)?' hl':''}">${i+1}: ${esc(t)}</span>`).join('');
+}
+const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+/* ---------------- 播放控制 ---------------- */
+let root = null, idx = 0, timer = null, states = [];
+function build(){
+  uid = 0;
+  root = buildTree(parseIn(document.getElementById('treeIn').value));
+  if(root) prepare(root);
+  if(root) layout(root);
+  draw(root);
+  trace(root);
+  bestPath = findBestPath(root, root ? subtreeMax(root) : 0);
+  buildStates();
+  idx = 0; render();
+}
+/* 重放事件流，生成每一步的完整快照 */
+function buildStates(){
+  const done = {}, ret = {};
+  const out = [ {done:{}, ret:{}, ans:-2147483648, cur:null, ev:null} ];
+  let ans = -2147483648;
+  for(const e of events){
+    if(e.type === 'exit'){ done[e.id] = true; ret[e.id] = e.up; ans = e.ans; }
+    out.push({done:{...done}, ret:{...ret}, ans, cur:(e.type==='done'?null:e.id), ev:e});
+  }
+  states = out;
+}
+function go(i){
+  idx = Math.max(0, Math.min(states.length-1, i));
+  render();
+}
+function stepBy(d){ stop(); go(idx + d); }
+/* ← / → 单步（输入框、下拉框聚焦时不劫持，保证能正常编辑） */
+document.addEventListener('keydown', (ev)=>{
+  const tag = (document.activeElement && document.activeElement.tagName) || '';
+  if(tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+  if(ev.key === 'ArrowLeft'){ ev.preventDefault(); stepBy(-1); }
+  else if(ev.key === 'ArrowRight'){ ev.preventDefault(); stepBy(1); }
+});
+function togglePlay(){
+  if(timer){ stop(); return; }
+  document.getElementById('btnPlay').textContent = '⏸ 暂停';
+  timer = setInterval(()=>{
+    if(idx >= states.length-1){ stop(); return; }
+    go(idx + 1);
+  }, 750);
+  go(idx + 1);
+}
+function stop(){
+  if(timer){ clearInterval(timer); timer = null; }
+  document.getElementById('btnPlay').textContent = '▶ 自动播放';
+}
+
+function render(){
+  const st = states[idx] || states[0];
+  const e = st.ev;
+  const winIds = new Set(bestPath.map(n=>n.id));
+  for(const n of nodes){
+    const g = document.querySelector(`.n[data-id="${n.id}"]`);
+    if(!g) continue;
+    const c = g.querySelector('circle'), t = g.querySelector('text');
+    const badge = g.querySelector('rect.retbg'), bt = g.querySelector('text.ret');
+    let fill = '#30363d', stroke = '#484f58', color = '#e6edf3';
+    if(winIds.has(n.id)){ fill = '#1a7f37'; stroke = '#2ea043'; }
+    if(st.done[n.id]){
+      fill = winIds.has(n.id) ? '#1a7f37' : '#238636'; stroke = winIds.has(n.id)?'#2ea043':'#3fb950';
+      const r = st.ret[n.id];
+      if(r < 0 && !winIds.has(n.id)){ fill = '#4b5563'; stroke = '#6e7681'; }
+    }
+    if(e && e.type !== 'done' && e.id === n.id){
+      if(e.type === 'enter'){ fill = '#1f6feb'; stroke = '#58a6ff'; color = '#fff'; }
+      else { fill = winIds.has(n.id) ? '#1a7f37' : '#2ea043'; stroke = winIds.has(n.id)?'#2ea043':'#3fb950'; }
+    }
+    c.setAttribute('fill', fill); c.setAttribute('stroke', stroke);
+    t.setAttribute('fill', color);
+    if(st.done[n.id]){
+      const r = st.ret[n.id];
+      badge.setAttribute('opacity', 1);
+      badge.setAttribute('fill', r < 0 && !winIds.has(n.id) ? '#6e7681' : (winIds.has(n.id)?'#2ea043':'#3fb950'));
+      bt.textContent = '↑' + r;
+    } else { badge.setAttribute('opacity', 0); bt.textContent = ''; }
+  }
+  // 边
+  for(const line of document.querySelectorAll('.edge')){
+    line.classList.remove('hot','win');
+    const to = +line.dataset.to;
+    if(winIds.has(to) && winIds.has(+line.dataset.from)) line.classList.add('win');
+  }
+  const activeNode = (e && e.id != null) ? byId[e.id] : null;
+  if(activeNode){
+    for(const line of document.querySelectorAll('.edge')){
+      if(+line.dataset.from === e.id || +line.dataset.to === e.id) line.classList.add('hot');
+    }
+  }
+
+  document.getElementById('ansVal').textContent  = st.ans;
+  document.getElementById('retVal').textContent = (e && e.type==='exit') ? e.up : '—';
+  document.getElementById('nodeVal').textContent = activeNode ? activeNode.val : '—';
+  document.getElementById('prog').textContent = `第 ${idx} / ${states.length-1} 步`;
+
+  // 栈
+  const stack = e ? e.stack : [];
+  document.getElementById('stack').innerHTML = stack.length
+    ? stack.map((id,k)=>{
+        const n = byId[id], act = (k === stack.length-1);
+        const sub = (states[idx].done && states[idx].done[id]) ? '✓' : '…';
+        return `<div class="chip ${act?'act':''}">${n.val}<span class="sub"> ${sub}</span></div>`
+             + (k<stack.length-1 ? '<span class="muted">›</span>' : '');
+      }).join('')
+    : '<span class="muted">（空 / 已全部返回）</span>';
+
+  // 说明
+  const ex = document.getElementById('explain');
+  if(!e){ ex.textContent = '点击“下一步”开始。'; document.getElementById('kvLeft').textContent='—';
+          document.getElementById('kvRight').textContent='—';
+          document.getElementById('kvCand').textContent='—';
+          document.getElementById('kvUp').textContent='—'; }
+  else if(e.type === 'enter'){
+    ex.innerHTML = `<b style="color:#58a6ff">${e.note}</b><br>先假设左子树返回 0、右侧返回 0，等两个 dfs 回来后才有真正的 left / right。`;
+    document.getElementById('kvLeft').textContent = '等待子调用';
+    document.getElementById('kvRight').textContent = '等待子调用';
+    document.getElementById('kvCand').textContent = '—'; document.getElementById('kvUp').textContent = '—';
+  } else if(e.type === 'exit'){
+    ex.innerHTML = `<b style="color:#58a6ff">${e.note}</b><br>`
+      + `左子树原样返回 <b>${e.rawL}</b>，取 max(0,·) 后 <b>${e.L}</b>（${e.rawL<0?'负数被剪掉':'保留'}）；`
+      + `右子树原样返回 <b>${e.rawR}</b>，取 max(0,·) 后 <b>${e.R}</b>。`
+      + `<br><span style="color:#3fb950">ans = max(${e.prev}, ${e.cand}) = ${e.ans}${e.changed?'　← 本次刷新了全局答案':''}</span>`
+      + `<br>返回给父亲：<b>${e.val} + max(${e.L}, ${e.R}) = ${e.up}</b>，只挑 <b>${e.L>=e.R?'左':'右'}</b> 边继续往上`;
+    document.getElementById('kvLeft').textContent = `${e.rawL} → ${e.L}`;
+    document.getElementById('kvRight').textContent = `${e.rawR} → ${e.R}`;
+    document.getElementById('kvCand').textContent = e.cand;
+    document.getElementById('kvUp').textContent = e.up;
+  } else {
+    ex.innerHTML = `<b style="color:#3fb950">${e.note}</b><br>整棵树里最大的“拐点候选”就是答案。绿色高亮路径即为该拐点 + 左右两侧的最优延伸。`;
+    document.getElementById('kvLeft').textContent='—';document.getElementById('kvRight').textContent='—';
+    document.getElementById('kvCand').textContent='—';document.getElementById('kvUp').textContent='—';
+  }
+
+  // 代码
+  let hl = [];
+  if(e && e.type === 'enter') hl = [1,2];
+  else if(e && (e.type === 'exit' || e.type === 'done')) hl = [4,5];
+  renderCode(hl);
+
+  // 日志：已完成的事件 + 当前事件（不重复显示）
+  const log = document.getElementById('log');
+  const doneCount = Math.max(0, idx - 1);   // states[i].ev 对应 events[i-1]
+  log.innerHTML = events.slice(0, doneCount).map((x,i)=>
+    `<div class="item ${x.type==='exit'&&x.changed?'upd':''}">${i+1}. ${x.note}</div>`).join('')
+    + (e ? `<div class="item cur ${e.type==='exit'&&e.changed?'upd':''}">${doneCount+1}. ${e.note}</div>` : '');
+  const cur = log.querySelector('.cur');
+  if(cur) cur.scrollIntoView({block:'nearest'});
+}
+
+build();
+</script>
+</body>
+</html>
