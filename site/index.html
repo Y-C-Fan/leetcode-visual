@@ -374,14 +374,22 @@
     { id: 'matrix', name: '矩阵' },
     { id: 'linked-list', name: '链表' },
     {
-      id: 'binary-tree', name: '二叉树', desc: '递归返回值与自底向上汇总。',
-      sub: [{
-        id: 'bt-path', name: '路径与公共祖先', note: '递归"冒泡"，返回值与全局答案分开算',
-        items: [
-          { n: '124', zh: '二叉树中的最大路径和', en: 'Binary Tree Maximum Path Sum', lv: 'Hard', hot: true, href: '二叉树/0124_binary_tree_maximum_path_sum.html' },
-          { n: '236', zh: '二叉树的最近公共祖先', en: 'Lowest Common Ancestor', lv: 'Medium', hot: true, href: '二叉树/0236_lowest_common_ancestor_of_a_binary_tree.html' }
-        ]
-      }]
+      id: 'binary-tree', name: '二叉树', desc: 'BFS 逐层展开，与 DFS 递归返回值自底向上汇总。',
+      sub: [
+        {
+          id: 'bt-bfs', name: '层序遍历', note: '队列逐层出队，按层收集结果',
+          items: [
+            { n: '102', zh: '二叉树的层序遍历', en: 'Binary Tree Level Order Traversal', lv: 'Medium', hot: true, href: '二叉树/0102_binary_tree_level_order_traversal.html' }
+          ]
+        },
+        {
+          id: 'bt-path', name: '路径与公共祖先', note: '递归"冒泡"，返回值与全局答案分开算',
+          items: [
+            { n: '124', zh: '二叉树中的最大路径和', en: 'Binary Tree Maximum Path Sum', lv: 'Hard', hot: true, href: '二叉树/0124_binary_tree_maximum_path_sum.html' },
+            { n: '236', zh: '二叉树的最近公共祖先', en: 'Lowest Common Ancestor', lv: 'Medium', hot: true, href: '二叉树/0236_lowest_common_ancestor_of_a_binary_tree.html' }
+          ]
+        }
+      ]
     },
     { id: 'graph', name: '图论' },
     { id: 'backtracking', name: '回溯' },

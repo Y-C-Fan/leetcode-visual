@@ -16,11 +16,11 @@
     font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
     font-size:14px; line-height:1.6;
   }
-  header{padding:18px 24px 10px; border-bottom:1px solid var(--line); background:var(--panel)}
-  header h1{margin:0 0 4px; font-size:19px}
-  header p{margin:0; color:var(--dim); font-size:13px}
-  .wrap{max-width:1500px; margin:0 auto; padding:18px 24px 60px}
-  .bar{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:16px}
+  header{padding:10px 24px 8px; border-bottom:1px solid var(--line); background:var(--panel)}
+  header h1{margin:0 0 2px; font-size:17px}
+  header p{margin:0; color:var(--dim); font-size:12.5px}
+  .wrap{margin:0 auto; padding:12px 24px 20px}
+  .bar{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:10px}
   input[type=text]{
     background:#0d1117; border:1px solid var(--line); color:var(--txt);
     padding:8px 12px; border-radius:8px; font-family:Consolas,monospace; width:340px; font-size:13px;
@@ -43,11 +43,29 @@
   .pq .tag{font-weight:700; padding:2px 10px; border-radius:6px}
   .tag.p{background:rgba(31,111,235,.25); color:#79c0ff; border:1px solid #1f6feb}
   .tag.q{background:rgba(188,140,255,.15); color:var(--purple); border:1px solid var(--purple)}
-  .grid{display:grid; grid-template-columns: 1fr 400px; gap:16px; align-items:start}
+  .grid{display:grid; grid-template-columns:minmax(0,1fr) 400px; gap:16px; align-items:start}
   @media (max-width:1100px){ .grid{grid-template-columns:1fr} }
-  .card{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px}
-  .card h2{margin:0 0 12px; font-size:14px; color:var(--accent); letter-spacing:.5px}
-  #treeWrap{overflow-x:auto; padding:8px 0 4px; min-height:330px; display:flex; align-items:center; justify-content:center}
+  /* 21:9 宽屏：两列拍平，主区变三栏（树 | 控制+解说 | 代码+日志），结论区变四栏 */
+  @media (min-width:1800px){
+    /* 树列按内容自适应（封顶 1050px），剩下的宽度全部分给文字列 */
+    .grid.main{grid-template-columns:fit-content(1050px) minmax(340px,1fr) minmax(380px,1.25fr)}
+    .grid.main>div{display:contents}
+    #cardTree{grid-column:1; grid-row:1}
+    #cardCtrl{grid-column:2; grid-row:1}
+    #cardCode{grid-column:3; grid-row:1}
+    #cardExplain{grid-column:2; grid-row:2}
+    #cardLog{grid-column:3; grid-row:2}
+    .bignums{grid-template-columns:1fr !important; gap:8px !important; margin-top:10px !important}
+    .bignums .card{display:flex; align-items:baseline; gap:10px; padding:8px 12px}
+    .bignums .big{font-size:22px}
+    .insgrid{grid-template-columns:repeat(4,minmax(0,1fr)) !important}
+  }
+  .insgrid{display:grid; grid-template-columns:1fr 1fr; gap:0 16px}
+  @media (max-width:1100px){ .insgrid{grid-template-columns:1fr} }
+  .bignums{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:14px}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:13px}
+  .card h2{margin:0 0 8px; font-size:14px; color:var(--accent); letter-spacing:.5px}
+  #treeWrap{overflow-x:auto; padding:8px 0 4px; min-height:250px; display:flex; align-items:center; justify-content:center}
   svg{display:block}
   .n{cursor:pointer}
   .n circle{transition:.2s}
@@ -66,7 +84,7 @@
   .chip.act{border-color:var(--accent); background:rgba(88,166,255,.15); color:#fff}
   .chip .sub{color:var(--dim); font-size:11px}
   .big{font-size:26px; font-weight:700; font-family:Consolas,monospace; color:var(--green)}
-  .log{height:300px; overflow-y:auto; font-family:Consolas,monospace; font-size:12.5px; line-height:1.7}
+  .log{height:260px; overflow-y:auto; font-family:Consolas,monospace; font-size:12.5px; line-height:1.7}
   .log .item{padding:2px 8px; border-radius:6px; color:var(--dim); white-space:pre-wrap}
   .log .item.cur{background:rgba(88,166,255,.15); color:#fff}
   .log .item.lca{color:var(--green)}
@@ -105,10 +123,10 @@
     <span class="muted">也可以直接点树上的节点：第一次点设 p，第二次点设 q，第三次起重新设 p</span>
   </div>
 
-  <div class="grid">
+  <div class="grid main">
     <!-- 左列 -->
     <div>
-      <div class="card">
+      <div class="card" id="cardTree">
         <h2>① 树（每个节点标注"向上报告"的值）</h2>
         <div id="treeWrap"></div>
         <div class="legend">
@@ -120,7 +138,7 @@
         </div>
       </div>
 
-      <div class="card" style="margin-top:16px">
+      <div class="card" id="cardCtrl" style="margin-top:16px">
         <h2>② 执行控制</h2>
         <div class="bar" style="margin:0">
           <button onclick="go(0)">⏮ 开头</button>
@@ -131,7 +149,7 @@
           <span class="muted" id="prog"></span>
           <span class="muted">← / → 单步</span>
         </div>
-        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:14px">
+        <div class="bignums">
           <div class="card" style="background:var(--panel2)">
             <div class="muted">本节点向上报告</div>
             <div class="big" id="retVal">—</div>
@@ -151,7 +169,7 @@
         </div>
       </div>
 
-      <div class="card" style="margin-top:16px">
+      <div class="card" id="cardCode" style="margin-top:16px">
         <h2>③ 代码逐行对照</h2>
         <div class="code" id="code"></div>
       </div>
@@ -159,7 +177,7 @@
 
     <!-- 右列 -->
     <div>
-      <div class="card">
+      <div class="card" id="cardExplain">
         <h2>本次执行发生了什么</h2>
         <div id="explain" class="muted" style="min-height:60px">点击“下一步”开始。</div>
         <div class="kv" style="margin-top:10px"><span>左子树报告</span><b id="kvLeft">—</b></div>
@@ -167,7 +185,7 @@
         <div class="kv"><span>本节点结论</span><b id="kvUp">—</b></div>
       </div>
 
-      <div class="card" style="margin-top:16px">
+      <div class="card" id="cardLog" style="margin-top:16px">
         <h2>事件日志</h2>
         <div class="log" id="log"></div>
       </div>
@@ -176,23 +194,19 @@
 
   <div class="card" style="margin-top:16px">
     <h2>④ 为什么这样写（"报告-冒泡"模型）</h2>
-    <div class="grid" style="grid-template-columns:1fr 1fr">
-      <div>
+    <div class="insgrid">
         <div class="ins"><b>每个 dfs 返回的语义</b><br>
           “我这棵子树里有谁”：只可能是四种答案——<code>null</code>（没货）、<code>p</code>（只有 p）、<code>q</code>（只有 q）、<code>LCA</code>（p 和 q 都在下面，答案已找到）。整个算法就是把这句话从叶子一路冒泡到根。
         </div>
         <div class="ins"><b>base case 三合一</b><br>
           <code>root == null</code> → 报告 null（这条路没货）。<code>root == p/q</code> → 报告自己，不再往下找——因为另一个目标要么在自己子树里（祖先情形），要么根本不在这条路，两种情况都无需继续，都由上层用"另一边是否为 null"自动分辨。
         </div>
-      </div>
-      <div>
         <div class="ins"><b>分叉点 = 答案（整棵树恰好出现一次）</b><br>
           当且仅当左、右报告都非空，p 和 q 分居两侧，当前节点就是最近公共祖先。之后它作为一个整体继续往上冒，上层只会看到一边非空，不会再产生第二个分叉点。
         </div>
         <div class="ins"><b>p 是 q 的祖先时为什么也成立</b><br>
           第一次遇到 p 就直接返回 p（根本不去找 q，q 就藏在 p 的子树里）。一路往上冒：p 所在链上，另一边永远是 null，于是 p 被原样递到根。如果 q 不在 p 子树里呢？那 q 一定在"另一边"的某条链上，分叉点会出现在 p 和 q 真正分开的那个祖先——算法不关心谁是谁的祖先，统一处理。
         </div>
-      </div>
     </div>
   </div>
 </div>

@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BFS 层序遍历 · 逐行执行可视化</title>
+<style>
+  :root{
+    --bg:#0d1117; --bg2:#161b22; --bg3:#1f2630; --line:#30363d;
+    --txt:#e6edf3; --dim:#8b949e; --cyan:#58a6ff; --green:#3fb950;
+    --amber:#d29922; --purple:#bc8cff; --red:#f85149; --orange:#ffa657;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;font-size:14px}
+  header{padding:14px 20px;border-bottom:1px solid var(--line);background:var(--bg2);
+    display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  header h1{font-size:17px;margin:0;letter-spacing:.5px}
+  .sub{color:var(--dim);font-size:12px}
+  .grow{flex:1}
+  button{background:var(--bg3);color:var(--txt);border:1px solid var(--line);
+    padding:6px 12px;border-radius:6px;cursor:pointer;font-size:13px;font-family:inherit}
+  button:hover{background:#2a313c;border-color:var(--cyan)}
+  button:disabled{opacity:.35;cursor:not-allowed}
+  button.primary{background:#1f6feb;border-color:#1f6feb;color:#fff}
+  button.primary:hover{background:#388bfd}
+  input[type=text]{background:var(--bg3);border:1px solid var(--line);color:var(--txt);
+    padding:6px 10px;border-radius:6px;width:220px;font-family:Consolas,monospace;font-size:13px}
+
+  .wrap{display:grid;grid-template-columns:minmax(430px,1fr) minmax(520px,1.15fr);gap:0;
+    height:calc(100vh - 129px)}
+  @media(max-width:1180px){.wrap{grid-template-columns:1fr;height:auto}}
+
+  .left{border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+  .right{display:flex;flex-direction:column;min-height:0;overflow:auto;padding:14px 16px;gap:12px}
+
+  .panel{background:var(--bg2);border:1px solid var(--line);border-radius:8px}
+  .panel h3{margin:0;padding:9px 12px;font-size:12px;letter-spacing:1px;color:var(--dim);
+    border-bottom:1px solid var(--line);text-transform:uppercase;font-weight:600}
+
+  .code{font-family:Consolas,"Cascadia Code",monospace;font-size:13.5px;line-height:1.75;
+    padding:10px 0;overflow:auto;flex:1;min-height:0}
+  .ln{display:flex;align-items:center;padding:0 14px 0 0;border-left:3px solid transparent;
+    white-space:pre;transition:background .18s}
+  .ln .no{color:#484f58;user-select:none;width:34px;flex:none;text-align:right;
+    padding-right:12px;font-size:12px}
+  .ln .cd{color:var(--txt)}
+  .ln.done{background:rgba(63,185,80,.05);border-left-color:rgba(63,185,80,.35)}
+  .ln.done .no{color:#3fb95088}
+  .ln.now{background:linear-gradient(90deg,rgba(31,111,235,.30),rgba(31,111,235,.05));
+    border-left-color:var(--cyan);box-shadow:inset 0 0 0 1px rgba(88,166,255,.25)}
+  .ln.now .cd{color:#fff;font-weight:600}
+  .ln.now .no{color:var(--cyan);font-weight:700}
+  .kw{color:#ff7b72}.ty{color:#ffa657}.st{color:#a5d6ff}.nm{color:#d2a8ff}.cm{color:#6e7681;font-style:italic}
+
+  .explain{padding:12px 14px;border-top:1px solid var(--line);background:var(--bg2);flex:none}
+  .badge{display:inline-block;background:var(--cyan);color:#04121f;font-weight:700;
+    font-size:11px;padding:2px 8px;border-radius:20px;margin-right:8px;vertical-align:2px}
+  .ttl{font-size:15px;font-weight:600;margin:0 0 8px}
+  .row{margin:7px 0;line-height:1.65}
+  .lbl{color:var(--dim);font-size:11px;letter-spacing:1px;display:block;margin-bottom:2px}
+  .eff{border-left:3px solid var(--amber);padding-left:10px;color:#e3b341}
+  .dtl{border-left:3px solid var(--dim);padding-left:10px;color:#c9d1d9}
+
+  .chips{display:flex;flex-wrap:wrap;gap:7px;padding:12px;align-items:center;min-height:52px}
+  .chip{background:var(--bg3);border:1px solid var(--line);border-radius:6px;
+    padding:5px 11px;font-family:Consolas,monospace;font-size:14px;position:relative}
+  .chip small{color:var(--dim);font-size:10px;margin-left:5px}
+  .chip.front{border-color:var(--cyan);box-shadow:0 0 0 1px rgba(88,166,255,.4);background:#17263e}
+  .chip.head::before{content:"队首→";position:absolute;top:-16px;left:0;font-size:10px;color:var(--cyan)}
+  .chip.tail{border-style:dashed}
+  .chip .v{color:var(--amber);font-weight:700}
+  .empty{color:var(--dim);font-style:italic;font-size:13px}
+  .arrows{color:var(--dim);font-size:12px;padding:0 12px 8px}
+
+  .layers{display:flex;gap:10px;padding:12px;flex-wrap:wrap;align-items:flex-end;min-height:64px}
+  .layer{background:#12261a;border:1px solid #2ea043;border-radius:8px;padding:8px 10px;min-width:70px}
+  .layer .t{font-size:10px;color:#3fb950;letter-spacing:1px;margin-bottom:5px;text-align:center}
+  .layer .v{font-family:Consolas,monospace;font-size:16px;color:#7ee787;text-align:center;letter-spacing:2px}
+  .layer.ghost{background:transparent;border:1px dashed var(--line);opacity:.4}
+  .layer.ghost .t,.layer.ghost .v{color:var(--dim)}
+
+  #tree svg{width:100%;height:auto;display:block}
+  .n-circle{fill:#21262d;stroke:#484f58;stroke-width:2}
+  .n-txt{fill:var(--txt);font-size:15px;font-weight:600;font-family:Consolas,monospace;text-anchor:middle}
+  .n-queued .n-circle{fill:#12263f;stroke:var(--cyan);stroke-width:3}
+  .n-done .n-circle{fill:#12261a;stroke:#2ea043;stroke-width:3}
+  .n-done .n-txt{fill:#7ee787}
+  .n-cur .n-circle{fill:#3d1d0d;stroke:var(--orange);stroke-width:4}
+  .n-cur .n-txt{fill:#ffd8a8}
+  .edge{stroke:#30363d;stroke-width:2}
+  .edge.walked{stroke:#2ea043;stroke-width:3}
+  .n-tag{font-size:10px;font-family:Consolas,monospace;text-anchor:middle}
+  .pulse{animation:pulse 1s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+  .note{padding:11px 13px;line-height:1.7}
+  .note b{color:var(--purple)}
+  .note code{background:var(--bg3);padding:1px 5px;border-radius:4px;color:#a5d6ff;
+    font-family:Consolas,monospace}
+  .delta{margin-top:8px;padding:8px 10px;background:#1d1a10;border:1px solid #4a3c14;
+    border-radius:6px;color:#e3b341;font-size:12.5px;line-height:1.7}
+  .prog{height:4px;background:var(--line);border-radius:2px;overflow:hidden;flex:none}
+  .prog i{display:block;height:100%;background:linear-gradient(90deg,var(--cyan),var(--green));
+    transition:width .2s}
+  .stepno{font-family:Consolas,monospace;font-size:12px;color:var(--dim)}
+</style>
+</head>
+<body>
+<header>
+  <h1>🔄 BFS 层序遍历 · 逐行执行可视化</h1>
+  <span class="sub">TreeNode → <code style="color:#a5d6ff">levelOrder()</code>　按层遍历（广度优先搜索）</span>
+  <span class="grow"></span>
+  <span class="sub">改树：</span>
+  <input type="text" id="treeIn" value="1,2,3,4,5,6,7">
+  <button class="primary" onclick="rebuild()">重建</button>
+</header>
+
+<div class="wrap">
+  <!-- 左：代码 + 讲解 -->
+  <div class="left">
+    <div class="panel" style="display:flex;flex-direction:column;flex:1;min-height:0;border-radius:0;border:0">
+      <h3>代码（行号从方法签名 <span style="color:var(--cyan)">第 1 行</span> 开始算，不含上面的注释块）</h3>
+      <div class="code" id="code"></div>
+    </div>
+    <div class="explain" id="explain"></div>
+  </div>
+
+  <!-- 右：运行时状态 -->
+  <div class="right">
+    <div class="panel">
+      <h3>🌳 内存里的树（当前指针 / 已出队 / 排队中）</h3>
+      <div id="tree"></div>
+    </div>
+
+    <div class="panel">
+      <h3>📥 队列 <code style="color:var(--cyan)">q</code>（左=队首=下一个出队，右=队尾）</h3>
+      <div class="chips" id="q"></div>
+    </div>
+
+    <div class="panel">
+      <h3>🧺 当前层 <code style="color:var(--amber)">level</code>（本轮 <code style="color:var(--amber)">for</code> 循环正在填的列表）</h3>
+      <div class="chips" id="lvl"></div>
+    </div>
+
+    <div class="panel">
+      <h3>📦 结果 <code style="color:var(--green)">res</code>（外层 List，一个元素 = 一层）</h3>
+      <div class="layers" id="res"></div>
+    </div>
+
+    <div class="panel" style="border-color:#30363d">
+      <h3>🧠 为什么第 8 行要写 <code style="color:var(--cyan)">int size = q.size()</code>？</h3>
+      <div class="note">
+        如果直接写 <code>while(!q.isEmpty())</code> 控制内层循环，那么第 12、13 行刚入队的<b>孩子</b>会被当成<b>同一层</b>处理，
+        就退化成了"把整棵树按 DFS 顺序拍平"，分层信息全丢。<br>
+        先把<b>进入本层时队列的长度</b>拍成快照 <code>size</code>，再用 <code>for(i=0;i&lt;size;i++)</code> 只取这么多元素——
+        新入队的节点排在队尾，<b>本轮不会被碰到</b>，它们属于下一层。<br>
+        <span style="color:var(--dim)">这就是"分层"这件事在代码里唯一的实现方式。</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="prog" style="position:fixed;left:0;right:0;bottom:0"><i id="bar" style="width:0"></i></div>
+
+<script>
+/* ============ 代码渲染 ============ */
+const CODE = [
+ [1, `public List<List<Integer>> levelOrder(TreeNode root) {`],
+ [2, `    List<List<Integer>> res = new ArrayList<>();`],
+ [3, `    if(root == null) return res;`],
+ [4, `    Deque<TreeNode> q = new ArrayDeque<>();`],
+ [5, `    q.offer(root);`],
+ [6, `    while(!q.isEmpty()){`],
+ [7, `        List<Integer> level = new ArrayList<>();`],
+ [8, `        int size = q.size();`],
+ [9, `        for(int i = 0; i < size; i++){`],
+ [10,`            TreeNode node = q.poll();`],
+ [11,`            level.add(node.val);`],
+ [12,`            if(node.left != null) q.offer(node.left);`],
+ [13,`            if(node.right != null) q.offer(node.right);`],
+ [14,`        }`],
+ [15,`        res.add(level);`],
+ [16, `    }`],
+ [17, `    return res;`],
+ [18, `}`]
+];
+const KW=/\b(public|List|new|if|return|null|Deque|ArrayDeque|while|for|int|else)\b/g;
+const TY=/\b(ArrayList|Integer|TreeNode|List)\b/g;
+function hl(s){
+  let x = s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  x = x.replace(/(\/\/.*)$/g,'<span class="cm">$1</span>');
+  x = x.replace(KW,'<span class="kw">$1</span>');
+  x = x.replace(TY,'<span class="ty">$1</span>');
+  return x;
+}
+document.getElementById('code').innerHTML = CODE
+  .map(([n,t])=>`<div class="ln" id="L${n}"><span class="no">${n}</span><span class="cd">${hl(t)}</span></div>`).join('');
+
+/* ============ 树构建 ============ */
+let uid = 0;
+/* 输入按【层序】解释：1,2,3,4,5,6,7 → 1 的孩子 2/3，2 的孩子 4/5，3 的孩子 6/7；null / - / 空 表示空缺 */
+function buildTree(arr){
+  uid = 0;
+  if(!arr.length || arr[0] === null || arr[0] === undefined) return null;
+  const root = { val:arr[0], id:'n'+(uid++), left:null, right:null };
+  const queue = [root];
+  let k = 1;                       // 指向"下一个待放入的非空值"
+  for(let i = 0; i < queue.length && k < arr.length; i++){
+    const n = queue[i];
+    for(const side of ['left','right']){
+      if(k >= arr.length) break;
+      const v = arr[k++];
+      if(v !== null && v !== undefined){
+        n[side] = { val:v, id:'n'+(uid++), left:null, right:null };
+        queue.push(n[side]);
+      }
+    }
+  }
+  return root;
+}
+function layout(root){
+  const pos = {}; let idx = 0, maxD = 0;
+  (function walk(n, d){
+    if(!n) return;
+    walk(n.left, d+1);
+    pos[n.id] = { x: 55 + idx*90, y: 52 + d*88 };
+    idx++; maxD = Math.max(maxD, d);
+    walk(n.right, d+1);
+  })(root, 0);
+  return { pos, w: 55 + (idx-1)*90 + 55, h: 52 + maxD*88 + 46 };
+}
+function countNodes(root){ let c=0; (function w(n){ if(!n)return; c++; w(n.left); w(n.right); })(root); return c; }
+function allNodes(root){ const a=[]; (function w(n){ if(!n)return; a.push(n); w(n.left); w(n.right); })(root); return a; }
+
+/* ============ 逐步执行模型（严格按源码行序模拟） ============ */
+function buildSteps(root){
+  const S = [];
+  let res = [], q = [], level = [], size = 0, i = 0, cur = null, done = [];
+  const V = n => n ? n.val : 'null';
+  const snap = (o={}) => ({ res:res.map(a=>a.slice()), q:q.map(n=>n.id),
+    level:level.slice(), size, i, cur, done:done.slice(), ...o });
+  const add = o => S.push(Object.assign({ st:snap() }, o));
+
+  add({ line:1, ttl:'① 方法被调用：levelOrder(root)',
+    dtl:`调用方把树根节点传进来，参数 <code>root</code> 现在指向值 <b>${V(root)}</b> 的节点。此刻 <code>res</code>、<code>q</code> 还不存在。`,
+    eff:`压入一个方法栈帧。局部变量 <code>res</code>/<code>q</code>/<code>level</code> 尚未初始化；整个方法的最终产物是 <code>return</code> 的那个 List。` });
+
+  res = [];
+  add({ line:2, ttl:'② 准备"结果容器" res',
+    dtl:`<code>res</code> 的类型是 <code>List&lt;List&lt;Integer&gt;&gt;</code>——一个"装着列表的列表"。外层每个元素代表树的一层。`,
+    eff:`堆上新建一个空 ArrayList（size=0），引用赋给局部变量 res。res 之后只被追加，不会被清空。` });
+
+  if(!root){
+    add({ line:3, ttl:'③ 命中空树守卫：直接返回',
+      dtl:`<code>root == null</code> 为真，说明调用方给的是空树，一层都没有。`,
+      eff:`立刻 <code>return res</code>，方法结束。res 是空列表 → 最终返回 <code>[]</code>。` });
+    add({ line:17, ttl:'返回结果', dtl:`返回空列表。`, eff:`方法结束，res 不可能为 null（因为第 2 行就 new 过了）。` });
+    return S;
+  }
+  add({ line:3, ttl:'③ 空树守卫检查：跳过',
+    dtl:`<code>root == null</code> 为假，<code>if</code> 体不执行，程序顺序往下走。`,
+    eff:`无任何副作用。写这一行是为了让方法对 null 入参也安全（不用它，第 5 行 offer(root) 会直接 NPE）。` });
+
+  q = [];
+  add({ line:4, ttl:'④ 准备 BFS 队列 q',
+    dtl:`<code>ArrayDeque</code> 是双端队列，底层是数组实现的循环队列；<code>offer/poll</code> 就是普通 FIFO 的入队/出队。`,
+    eff:`新建一个空队列。选 Deque 而不是 Queue 是因为 <code>ArrayDeque</code> 性能更好、且 null 元素规则更严格（正好能暴露 bug）。` });
+
+  q.push(root); done = [];
+  add({ line:5, ttl:'⑤ 根节点入队 —— BFS 的起点',
+    dtl:`<code>q.offer(root)</code> 把根放进队尾。此时队列里只有 1 个元素。`,
+    eff:`q: <b>[] → [${V(root)}]</b>。这是唯一的"初始状态"，之后所有节点都靠"父节点出队时把孩子入队"的方式被加进来。` });
+
+  let guard = 0;
+  while(q.length > 0){
+    add({ line:6, ttl:`⑥ while 条件成立（第 ${++guard} 轮）`,
+      dtl:`<code>q.isEmpty()</code> 返回 false，队列里还有 <b>${q.length}</b> 个节点（${q.map(V).join(', ')}），说明还有节点没被访问。`,
+      eff:`进入新一轮循环体。注意：从这里开始，<b>每一轮恰好处理一整层</b>。` });
+
+    level = []; const layerIdx = res.length;
+    add({ line:7, ttl:'⑦ 新建"本层"列表 level',
+      dtl:`<code>level</code> 是本轮专用的临时列表，每轮 <code>new</code> 一个新对象。它和 res 是两个不同的对象。`,
+      eff:`堆上新对象，level 指向它（size=0）。这正是分层的载体：<b>填满了才整体挂到 res 上</b>。` });
+
+    size = q.length;
+    add({ line:8, ttl:'⑧ 冻结本层节点数 size = ' + size,
+      dtl:`此刻队列里正好是 <b>[${q.map(V).join(', ')}]</b>，共 ${size} 个——它们就是"第 ${layerIdx+1} 层"的全部节点。<br>把 <code>q.size()</code> 存进局部变量 <code>size</code>，从此这个数字<b>不再随入队而变化</b>。`,
+      eff:`size = <b>${size}</b>。这一行是整个算法正确性的关键：它给内层循环划了"边界"，防止新入队的孩子被误算进本层。` });
+
+    i = 0;
+    for(; i < size; i++){
+      if(i === 0){
+        add({ line:9, ttl:'⑨ 内层 for 开始：i = 0，判定 0 < ' + size + ' ✓',
+          dtl:`<code>int i = 0</code> 先初始化计数器；立刻判断 <code>i &lt; size</code>。本轮 i 从 0 走到 ${size-1}，共循环 ${size} 次。`,
+          eff:`i = 0。` });
+      } else {
+        add({ line:9, ttl:`⑨ 内层 for：i++ 后 i = ${i}，判定 ${i} < ${size} ${i<size?'✓ 继续':'✗ 退出'}`,
+          dtl:`循环体末尾的 <code>i++</code> 已执行。${i<size?`还没取够 ${size} 个，继续。`:`i 已经等于 size，取满了，本层结束。`}`,
+          eff:`i = <b>${i}</b>，判定结果 <b>${i<size?'true':'false'}</b>。` });
+      }
+      if(i >= size) break;
+
+      const qPrev = q.slice();
+      const node = q.shift(); cur = node;
+      add({ line:10, ttl:`⑩ 出队：node = ${V(node)}`,
+        dtl:`<code>q.poll()</code> 取出并<b>移除</b>队首元素，返回值赋给局部变量 <code>node</code>。现在 node 指向值 <b>${V(node)}</b> 的节点。`,
+        eff:`q: <b>[${qPrev.map(V).join(', ')}]</b> → <b>[${q.map(V).join(', ')}]</b>（移除队首 ${V(node)}）。这是本方法里唯一"删除"数据的操作，poll 在空队列上会返回 null —— 所以外层必须先判 isEmpty。` });
+      done.push(node.id);
+
+      const lvlBefore = level.length;
+      level.push(node.val);
+      add({ line:11, ttl:`⑪ level.add(${node.val})`,
+        dtl:`把 <code>node.val</code>（<b>${node.val}</b>）追加进本层列表。它追加在<b>末尾</b>，所以本层内部顺序 = 出队顺序 = 从左到右。`,
+        eff:`level: <b>[${level.slice(0,lvlBefore).join(', ')}] → [${level.join(', ')}]</b>。注意只存了 <code>val</code>（int），没存节点引用。` });
+
+      const qBefore = q.length;
+      if(node.left){
+        q.push(node.left);
+        add({ line:12, ttl:`⑫ 左孩子 ${node.left.val} 入队`,
+          dtl:`<code>node.left != null</code> 成立，<code>q.offer(node.left)</code> 把左孩子放到<b>队尾</b>。`,
+          eff:`q 长度 <b>${qBefore} → ${q.length}</b>，新增 <b>${node.left.val}</b>。它排在所有旧队尾元素之后 → 属于下一层，不会被本轮 i<size 处理。` });
+      } else {
+        add({ line:12, ttl:`⑫ 左孩子为 null：跳过`,
+          dtl:`<code>node.left == null</code>，if 体不执行（这里不抛异常，是显式判空）。`,
+          eff:`q 不变（长度仍 ${q.length}）。这条分支就是"缺失的左子树"被安全忽略的地方。` });
+      }
+      if(node.right){
+        q.push(node.right);
+        add({ line:13, ttl:`⑬ 右孩子 ${node.right.val} 入队`,
+          dtl:`<code>node.right != null</code> 成立，右孩子入队尾。`,
+          eff:`q 长度 <b>${q.length-1} → ${q.length}</b>，新增 <b>${node.right.val}</b>。左先右后 → 出队顺序天然是从左到右。` });
+      } else {
+        add({ line:13, ttl:`⑬ 右孩子为 null：跳过`,
+          dtl:`<code>node.right == null</code>，跳过。`,
+          eff:`q 不变（长度仍 ${q.length}）。` });
+      }
+    }
+    cur = null;
+    add({ line:14, ttl:'⑭ 内层 for 结束：i = size，本层取满',
+      dtl:`<code>i</code> 已自增到 <b>${size}</b>，条件 <code>i &lt; size</code> 为假，for 块（9~13 行）整体退出。`,
+      eff:`本层不再有任何出队操作。level 已经收集了 ${level.length} 个值。` });
+
+    res.push(level.slice());
+    add({ line:15, ttl:`⑮ res.add(level) —— 把整层收进结果`,
+      dtl:`<code>res</code> 现在有 <b>${res.length}</b> 个元素了；第 <b>${res.length}</b> 个元素就是刚才那个 list 对象，内容是 <b>[${level.join(', ')}]</b>。`,
+      eff:`res: <b>${res.length-1} 层 → ${res.length} 层</b>。<code>res</code> 里存的是 level 的<b>引用</b>；下一轮第 7 行会 new 一个新 list，所以之前那层不会被覆盖（如果第 7 行写成 <code>level.clear()</code> 就全错了）。` });
+  }
+
+  add({ line:16, ttl:'⑯ while 再次判断：队列已空，循环退出',
+    dtl:`所有节点都已出队过，<code>q.isEmpty()</code> 返回 true（队列长度 0），<code>while</code> 体不再执行。`,
+    eff:`退出循环，方法体只剩 return。共产出 <b>${res.length}</b> 层，总节点 <b>${res.reduce((a,b)=>a+b.length,0)}</b> 个。` });
+
+  add({ line:17, ttl:'⑰ return res',
+    dtl:`返回结果列表 <code>${JSON.stringify(res)}</code>。`,
+    eff:`方法结束。返回的是 <code>res</code> 的引用；方法内的局部变量随之失效，但 res 对象仍在堆上被调用方持有。` });
+  return S;
+}
+let st = {};   // 上一帧的队列，用于展示 delta
+
+/* ============ 渲染 ============ */
+let root, STEPS, idx = 0, timer = null, speed = 900;
+
+function rebuild(){
+  const raw = document.getElementById('treeIn').value.split(',').map(s=>s.trim());
+  const arr = raw.map(s => (s===''||s==='null'||s==='-') ? null : (/^-?\d+$/.test(s) ? +s : s));
+  root = buildTree(arr);
+  STEPS = buildSteps(root);
+  idx = 0; st = {};
+  stop(); render();
+}
+
+function delta(cur){
+  const p = st, c = cur;
+  if(!p || !p._init){ return '（首帧，没有对比基准）'; }
+  const out = [];
+  if(p.q.join(',') !== c.q.join(',')){
+    const a = p.q.map(id=>idN(id)), b = c.q.map(id=>idN(id));
+    out.push(`队列 <code>q</code>：<span style="color:#8b949e">[${a.join(', ')}]</span> → <b style="color:#7ee787">[${b.join(', ')}]</b>（长度 ${a.length} → ${b.length}）`);
+  }
+  if(p.level.join(',') !== c.level.join(','))
+    out.push(`当前层 <code>level</code>：<span style="color:#8b949e">[${p.level.join(', ')}]</span> → <b style="color:#7ee787">[${c.level.join(', ')}]</b>`);
+  if(p.res.length !== c.res.length)
+    out.push(`结果 <code>res</code>：<b>${p.res.length} 层 → ${c.res.length} 层</b>`);
+  if(p.size !== c.size) out.push(`<code>size</code>：<b>${p.size} → ${c.size}</b>`);
+  if(p.i !== c.i) out.push(`<code>i</code>：<b>${p.i} → ${c.i}</b>`);
+  return out.length ? out.join('<br>') : '本步没有任何数据结构发生变化（只是取值/判断）';
+}
+function idN(id){ const n = allNodes(root).find(x=>x.id===id); return n ? n.val : id; }
+
+function render(){
+  const s = STEPS[idx];
+  if(!s) return;
+  const cur = s.st;
+
+  // 代码高亮
+  const lastLine = idx > 0 ? STEPS[idx-1].line : 0;
+  document.querySelectorAll('.ln').forEach(e=>{
+    const n = +e.id.slice(1);
+    e.classList.toggle('now', n === s.line);
+    e.classList.toggle('done', n < s.line || (n === s.line && false));
+  });
+
+  // 讲解
+  document.getElementById('explain').innerHTML =
+    `<p class="ttl"><span class="badge">第 ${s.line} 行</span>${s.ttl}</p>
+     <div class="row"><span class="lbl">这行在做什么</span><div class="dtl">${s.dtl}</div></div>
+     <div class="row"><span class="lbl">产生的影响</span><div class="eff">${s.eff}</div></div>
+     <div class="delta">⚡ 状态变化：${delta(cur)}</div>`;
+
+  // 树
+  const { pos, w, h } = layout(root);
+  let edges = '', nodes = '';
+  allNodes(root).forEach(n=>{
+    ['left','right'].forEach(k=>{
+      const c = n[k]; if(!c) return;
+      const a = pos[n.id], b = pos[c.id];
+      const walked = cur.done.includes(n.id) && (cur.done.includes(c.id) || cur.q.includes(c.id) || (cur.cur===c.id));
+      edges += `<path class="edge ${walked?'walked':''}" d="M${a.x},${a.y} C${a.x},${(a.y+b.y)/2} ${b.x},${(a.y+b.y)/2} ${b.x},${b.y}"/>`;
+    });
+  });
+  const queued = cur.q, doneS = cur.done;
+  allNodes(root).forEach(n=>{
+    const p = pos[n.id];
+    const isQ = queued.includes(n.id), isD = doneS.includes(n.id), isC = cur.cur === n.id;
+    let cls = isC ? 'n-cur' : isD ? 'n-done' : isQ ? 'n-queued' : '';
+    let tag = '';
+    if(isC) tag = `<text class="n-tag" x="${p.x}" y="${p.y-27}" style="fill:#ffa657;font-weight:700">◀ 当前 node</text>`;
+    else if(isQ) tag = `<text class="n-tag" x="${p.x}" y="${p.y-24}" style="fill:#58a6ff">队列中 #${queued.indexOf(n.id)+1}</text>`;
+    else if(isD) tag = `<text class="n-tag" x="${p.x}" y="${p.y-24}" style="fill:#3fb950">已出队</text>`;
+    nodes += `${tag}<g class="${cls}" data-id="${n.id}">
+      <circle class="n-circle ${isC?'pulse':''}" cx="${p.x}" cy="${p.y}" r="20"/>
+      <text class="n-txt" x="${p.x}" y="${p.y+5}">${n.val}</text></g>`;
+  });
+  document.getElementById('tree').innerHTML =
+    `<svg viewBox="0 0 ${Math.max(w,120)} ${h}" preserveAspectRatio="xMidYMid meet">${edges}${nodes}</svg>`;
+
+  // 队列
+  const qEl = document.getElementById('q');
+  if(!cur.q.length) qEl.innerHTML = `<span class="empty">q 为空 —— 意味着树已经遍历完毕</span>`;
+  else qEl.innerHTML = cur.q.map((id,k)=>
+    `<div class="chip ${k===0?'front head':''} ${k===cur.q.length-1?'tail':''}">${idN(id)}<small>${id}</small></div>`).join('')
+    + `<div class="arrows" style="align-self:center">q.size() = <b style="color:#ffa657">${cur.q.length}</b>${cur.size?`　·　快照 size = <b style="color:#ffa657">${cur.size}</b>${cur.size!==cur.q.length?'（已变，但内层只认快照）':''}`:''}</div>`;
+
+  // 当前层
+  document.getElementById('lvl').innerHTML = cur.level.length
+    ? cur.level.map((v,k)=>`<div class="chip">${v}<small>idx ${k}</small></div>`).join('')
+    : `<span class="empty">level 还是空的（第 7 行刚 new 出来）</span>`;
+
+  // 结果
+  const rEl = document.getElementById('res');
+  rEl.innerHTML = cur.res.length
+    ? cur.res.map((l,k)=>`<div class="layer"><div class="t">第 ${k+1} 层</div><div class="v">${l.length>12?l.join(' '):l.join(' ')}</div></div>`).join('')
+    + (cur.level.length?`<div class="layer ghost"><div class="t">第 ${cur.res.length+1} 层</div><div class="v">${cur.level.join(' ')}</div></div>`:'')
+    : `<span class="empty">res 还是空的</span>`;
+
+  // 进度
+  document.getElementById('bar').style.width = (idx/(STEPS.length-1)*100)+'%';
+  document.getElementById('code').scrollTop = Math.max(0, (s.line-4)*24);
+  document.querySelectorAll('.ctrl').forEach(b=>{
+    if(b.dataset.k==='prev') b.disabled = idx===0;
+    if(b.dataset.k==='next') b.disabled = idx===STEPS.length-1;
+  });
+  document.getElementById('stp').textContent = `步骤 ${idx+1} / ${STEPS.length}　|　第 ${s.line} 行`;
+  st = Object.assign({}, cur, { _init:true });
+}
+
+function go(d){ idx = Math.max(0, Math.min(STEPS.length-1, idx+d)); render(); }
+function stop(){ if(timer){ clearInterval(timer); timer=null;
+  document.querySelector('[data-k=play]').textContent='▶ 播放'; } }
+function play(){
+  if(timer) return stop();
+  if(idx >= STEPS.length-1) idx = 0;
+  document.querySelector('[data-k=play]').textContent='⏸ 暂停';
+  timer = setInterval(()=>{ if(idx >= STEPS.length-1) return stop(); idx++; render(); }, speed);
+}
+document.addEventListener('keydown', e=>{
+  if(e.key==='ArrowRight'||e.key==='ArrowDown'){ stop(); go(1); }
+  if(e.key==='ArrowLeft' ||e.key==='ArrowUp'  ){ stop(); go(-1); }
+  if(e.code==='Space'){ e.preventDefault(); play(); }
+});
+document.getElementById('treeIn').addEventListener('keydown', e=>{ if(e.key==='Enter') rebuild(); });
+</script>
+
+<script>
+/* 控制条注入到 header 之后 */
+const bar = document.createElement('div');
+bar.style.cssText='display:flex;align-items:center;gap:8px;padding:9px 20px;background:var(--bg2);border-bottom:1px solid var(--line);flex-wrap:wrap';
+bar.innerHTML = `
+  <button class="primary ctrl" data-k="play">▶ 播放</button>
+  <button class="ctrl" data-k="prev">◀ 上一步</button>
+  <button class="ctrl" data-k="next">下一步 ▶</button>
+  <button class="ctrl" data-k="reset">⟲ 重来</button>
+  <span style="width:10px"></span>
+  <span class="sub">跳到行：</span>
+  ${[1,2,3,5,6,8,9,10,11,12,15,17].map(n=>`<button class="ctrl" data-l="${n}">${n}</button>`).join('')}
+  <span class="grow"></span>
+  <span class="sub">速度</span>
+  <input type="range" id="sp" min="120" max="1800" step="20" value="900" style="width:110px">
+  <span class="stepno" id="stp"></span>`;
+document.querySelector('header').after(bar);
+bar.addEventListener('click', e=>{
+  const b = e.target.closest('button'); if(!b) return;
+  stop();
+  if(b.dataset.k==='play') play();
+  else if(b.dataset.k==='prev') go(-1);
+  else if(b.dataset.k==='next') go(1);
+  else if(b.dataset.k==='reset'){ idx=0; render(); }
+  else if(b.dataset.l){ const i=STEPS.findIndex(s=>s.line==+b.dataset.l); if(i>=0){ idx=i; render(); } }
+});
+document.getElementById('sp').addEventListener('input', e=>{
+  speed = +e.target.value; if(timer){ stop(); play(); }
+});
+rebuild();
+</script>
+</body>
+</html>
