@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>46. 全排列回溯可视化</title>
+  <style>
+    :root {
+      --bg: #1a1b26;
+      --panel: #24283b;
+      --card: #292e42;
+      --text: #a9b1d6;
+      --muted: #565f89;
+      --accent: #bb9af7;
+      --accent-2: #7aa2f7;
+      --good: #9ece6a;
+      --warn: #e0af68;
+      --bad: #f7768e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: radial-gradient(circle at 50% 0%, #24283b, var(--bg));
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header {
+      padding: 32px 20px 10px;
+      text-align: center;
+    }
+    header h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      background: linear-gradient(to right, var(--accent), var(--accent-2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    header p { margin: 0; color: var(--muted); }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 20px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid #24283b;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    button {
+      background: var(--accent);
+      border: none;
+      color: #1a1b26;
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    button:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    button.secondary { background: var(--accent-2); color: #1a1b26; }
+    button.ghost { background: transparent; color: var(--text); border: 1px solid #414868; }
+    button.active-mode { background: var(--accent-2); color: white; }
+    .chip {
+      background: #24283b;
+      border: 1px solid #414868;
+      padding: 6px 10px;
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .chip b { color: var(--text); font-weight: 600; }
+    h3 { color: var(--accent); margin: 18px 0 10px; font-size: 15px; }
+    h3:first-of-type { margin-top: 14px; }
+
+    .nums-grid { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    .num-cell {
+      min-width: 76px;
+      background: var(--card);
+      padding: 10px 8px 8px;
+      border-radius: 10px;
+      border: 1px solid #2d2d3d;
+      text-align: center;
+      transition: all 0.25s ease;
+    }
+    .num-cell .idx { font-size: 12px; color: var(--muted); font-weight: 600; }
+    .num-cell .val { font-size: 20px; font-weight: 700; margin: 2px 0; }
+    .num-cell .used-tag { font-size: 11px; color: var(--muted); }
+    .num-cell.trying { outline: 2px solid var(--accent); background: #2f334d; }
+    .num-cell.used { outline: 2px dashed var(--good); background: #223733; }
+    .num-cell.used .used-tag { color: var(--good); }
+    .num-cell.skipped { outline: 2px dashed var(--bad); opacity: 0.75; }
+
+    .path-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; min-height: 52px; }
+    .path-slot {
+      min-width: 52px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      font-size: 18px;
+      font-weight: 700;
+      background: var(--card);
+      border: 1px solid #2d2d3d;
+      transition: all 0.25s ease;
+    }
+    .path-slot.filled { background: #2f334d; border-color: var(--accent); color: var(--accent); }
+    .path-slot.cursor { outline: 2px solid var(--warn); }
+    .path-arrow { color: var(--muted); font-weight: 700; }
+    .path-empty { color: var(--muted); font-size: 13px; }
+
+    .res-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+    .res-item {
+      background: #16161e;
+      border: 1px solid #24283b;
+      border-radius: 10px;
+      padding: 6px 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+    }
+    .res-item.done { border-color: var(--good); color: var(--good); }
+    .res-empty { color: var(--muted); font-size: 13px; }
+
+    .stack {
+      margin-top: 8px;
+      background: #16161e;
+      border: 1px solid #24283b;
+      border-radius: 12px;
+      padding: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      max-height: 150px;
+      overflow: auto;
+    }
+    .stack div { padding: 3px 0; border-bottom: 1px solid #1a1b26; }
+    .stack .top { color: var(--warn); }
+
+    .legend { display: flex; gap: 15px; flex-wrap: wrap; margin: 10px 0 0; }
+    .legend span { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .dot.try { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+    .dot.used { background: var(--good); box-shadow: 0 0 8px var(--good); }
+    .dot.skip { background: var(--bad); box-shadow: 0 0 8px var(--bad); }
+
+    .formula-display {
+      background: #1a1b26;
+      border: 1px solid #414868;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 16px 0 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: var(--text);
+    }
+    .formula-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--accent);
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #2d2d3d;
+      letter-spacing: 0.5px;
+    }
+    .formula-content { font-size: 14px; line-height: 1.7; }
+    .formula-content b { color: var(--accent); }
+    .formula-content .highlight { color: var(--good); font-weight: bold; }
+    .formula-content .math { color: var(--warn); }
+    .formula-content .no { color: var(--bad); }
+
+    .explain { line-height: 1.7; color: var(--text); font-size: 14px; }
+    .explain h3 { margin-top: 14px; }
+    .explain ol, .explain ul { padding-left: 20px; margin: 8px 0; }
+    .explain li { margin: 4px 0; }
+    .explain code {
+      background: #16161e;
+      border: 1px solid #414868;
+      border-radius: 6px;
+      padding: 1px 6px;
+      font-size: 12px;
+      color: var(--warn);
+    }
+    .code-block {
+      background: #16161e;
+      border: 1px solid #414868;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 12px 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12.5px;
+      line-height: 1.65;
+      color: #a9b1d6;
+      overflow-x: auto;
+      white-space: pre;
+    }
+    .code-block .keyword { color: var(--accent); }
+    .code-block .type { color: var(--accent-2); }
+    .code-block .method { color: var(--good); }
+    .code-block .comment { color: var(--muted); font-style: italic; }
+    .code-block .num { color: var(--warn); }
+
+    .log {
+      max-height: 240px;
+      overflow: auto;
+      background: #16161e;
+      border-radius: 12px;
+      border: 1px solid #24283b;
+      padding: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      color: #a9b1d6;
+    }
+    .log div { padding: 4px 0; border-bottom: 1px solid #1a1b26; }
+    .log .k-enter { color: var(--accent-2); }
+    .log .k-choose { color: var(--accent); }
+    .log .k-found { color: var(--good); }
+    .log .k-back { color: var(--warn); }
+    .log .k-skip { color: var(--muted); }
+    .footer-note { color: var(--muted); font-size: 12px; margin-top: 8px; }
+    .kbd-hint { color: var(--muted); font-size: 12px; margin-top: 10px; text-align: center; }
+
+    .tree-wrap {
+      overflow-x: auto;
+      margin-top: 8px;
+      background: #16161e;
+      border: 1px solid #24283b;
+      border-radius: 12px;
+      padding: 8px;
+    }
+    #treeSvg { width: 100%; height: auto; display: block; min-width: 520px; }
+    #treeSvg .edge { stroke: #414868; stroke-width: 2; }
+    #treeSvg .edge.on { stroke: var(--accent); stroke-width: 3; }
+    #treeSvg .node { fill: var(--card); stroke: #414868; stroke-width: 2; }
+    #treeSvg .node.on { stroke: var(--warn); stroke-width: 2.5; }
+    #treeSvg .node.cur { fill: #2f334d; stroke: var(--accent); stroke-width: 3; }
+    #treeSvg .node.found { fill: #223733; stroke: var(--good); stroke-width: 2.5; }
+    #treeSvg .nlabel { fill: var(--text); font-size: 15px; font-weight: 700; font-family: ui-monospace, Menlo, Consolas, monospace; }
+    #treeSvg .nsub { fill: var(--muted); font-size: 11px; font-family: ui-monospace, Menlo, Consolas, monospace; }
+    .dot.cur { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+    .dot.found { background: var(--good); box-shadow: 0 0 8px var(--good); }
+
+    .code-state {
+      background: #1a1b26;
+      border: 1px solid #414868;
+      border-radius: 10px;
+      padding: 8px 12px;
+      margin: 12px 0 8px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .code-state b { color: var(--warn); }
+    #codeBlock .cl {
+      padding: 1px 10px;
+      border-radius: 6px;
+      border-left: 3px solid transparent;
+      transition: background 0.2s ease, opacity 0.2s ease;
+    }
+    #codeBlock .cl.on {
+      background: #2f334d;
+      border-left-color: var(--accent);
+      color: #fff;
+    }
+    #codeBlock .cl.dim { opacity: 0.42; }
+
+    @media (max-width: 900px) {
+      .container { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>46. 全排列：回溯试探与撤销可视化</h1>
+    <p>示例：nums = [1, 2, 3] &rarr; 共 3! = 6 种排列 &nbsp;|&nbsp; 用 &larr; &rarr; 逐帧推进，空格自动播放</p>
+  </header>
+
+  <div class="container">
+    <section class="panel">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+        <div class="controls">
+          <button id="btnPrev">上一步</button>
+          <button id="btnNext">下一步</button>
+          <button id="btnPlay" class="secondary">自动播放</button>
+          <button id="btnReset" class="ghost">重置</button>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button id="btnN3" class="active-mode" style="padding: 6px 12px; font-size: 13px;">nums = [1,2,3]</button>
+          <button id="btnN2" class="ghost" style="padding: 6px 12px; font-size: 13px;">nums = [1,2]</button>
+        </div>
+      </div>
+
+      <div class="controls" style="margin-bottom: 4px;">
+        <span class="chip" id="stepInfo">Step 0</span>
+        <span class="chip" id="depthInfo">depth: -</span>
+        <span class="chip" id="pathInfo">path: []</span>
+        <span class="chip" id="resInfo">res: 0 组</span>
+      </div>
+
+      <div class="legend">
+        <span><i class="dot try"></i>正在试探下标 i</span>
+        <span><i class="dot used"></i>used[i] = true（已选）</span>
+        <span><i class="dot skip"></i>跳过（used，直接 continue）</span>
+        <span><i class="dot cur"></i>树上当前 dfs 节点</span>
+        <span><i class="dot found"></i>已收集的叶子（完整排列）</span>
+      </div>
+
+      <div id="formulaBox" class="formula-display">
+        <div class="formula-title">等待开始…</div>
+        <div class="formula-content">点击「下一步」进入 dfs。</div>
+      </div>
+
+      <h3>① 递归搜索树（dfs 调用 = 节点，path 填满 = 叶子变绿）</h3>
+      <div class="tree-wrap"><svg id="treeSvg" role="img" aria-label="全排列回溯搜索树"></svg></div>
+
+      <h3>② nums 与 used[]（每个位置只能用一次）</h3>
+      <div class="nums-grid" id="numsGrid"></div>
+
+      <h3>③ path（已选路径，深度 = path.size()）</h3>
+      <div class="path-row" id="pathRow"></div>
+
+      <h3>④ res（收集到的完整排列）</h3>
+      <div class="res-list" id="resList"></div>
+
+      <h3>⑤ 递归调用栈（栈顶 = 当前 dfs）</h3>
+      <div class="stack" id="stackBox"></div>
+
+      <h3>操作日志（对照你的 dfs 代码）</h3>
+      <div class="log" id="log"></div>
+      <div class="footer-note">for 循环按 i = 0 → n-1 依次试探：used 跳过 → 选入 path → 递归 → 撤销（remove + used=false）。</div>
+      <div class="kbd-hint">&larr; 上一步 &nbsp; &rarr; 下一步 &nbsp; 空格 播放 / 暂停</div>
+    </section>
+
+    <section class="panel explain">
+      <h3>你的代码在干什么</h3>
+      <div class="code-state" id="codeState">等待开始…</div>
+      <div class="code-block" id="codeBlock"><div class="cl"><span class="keyword">class</span> Solution {</div><div class="cl">    <span class="type">List</span>&lt;<span class="type">List</span>&lt;<span class="type">Integer</span>&gt;&gt; res = <span class="keyword">new</span> <span class="type">ArrayList</span>&lt;&gt;();</div><div class="cl">    <span class="type">List</span>&lt;<span class="type">Integer</span>&gt; path = <span class="keyword">new</span> <span class="type">ArrayList</span>&lt;&gt;();</div><div class="cl">    <span class="keyword">boolean</span>[] used;</div><div class="cl">    <span class="keyword">public</span> <span class="type">List</span>&lt;<span class="type">List</span>&lt;<span class="type">Integer</span>&gt;&gt; <span class="method">permute</span>(<span class="keyword">int</span>[] nums) {</div><div class="cl">        used = <span class="keyword">new</span> <span class="keyword">boolean</span>[nums.length];</div><div class="cl">        <span class="method">dfs</span>(nums);</div><div class="cl">        <span class="keyword">return</span> res;</div><div class="cl">    }</div><div class="cl">    <span class="keyword">public void</span> <span class="method">dfs</span>(<span class="keyword">int</span>[] nums){</div><div class="cl" data-l="D1">        <span class="keyword">if</span>(path.<span class="method">size</span>() == nums.length){</div><div class="cl" data-l="D2">            res.<span class="method">add</span>(<span class="keyword">new</span> <span class="type">ArrayList</span>&lt;&gt;(path));</div><div class="cl" data-l="D3">            <span class="keyword">return</span>;</div><div class="cl">        }</div><div class="cl" data-l="D4">        <span class="keyword">for</span>(<span class="keyword">int</span> i = <span class="num">0</span>; i &lt; nums.length; i++){</div><div class="cl" data-l="D5">            <span class="keyword">if</span>(used[i]) <span class="keyword">continue</span>;</div><div class="cl" data-l="D6">            path.<span class="method">add</span>(nums[i]);</div><div class="cl" data-l="D7">            used[i] = <span class="keyword">true</span>;</div><div class="cl" data-l="D8">            <span class="method">dfs</span>(nums);</div><div class="cl" data-l="D9">            path.<span class="method">remove</span>(path.<span class="method">size</span>() - <span class="num">1</span>);</div><div class="cl" data-l="D10">            used[i] = <span class="keyword">false</span>;</div><div class="cl">        }</div><div class="cl">    }</div><div class="cl">}</div></div>
+
+      <h3>回溯五句话</h3>
+      <ol>
+        <li><code>path</code>：已选的前缀，第 depth 位正在填谁。</li>
+        <li><code>used[i]</code>：nums[i] 是否已在 path 里，保证每个数字只用一次。</li>
+        <li><b>终止</b>：<code>path.size() == n</code> 就收集，注意必须 <code>new ArrayList&lt;&gt;(path)</code> 拷贝，否则后面 remove 会改掉已收集的结果。</li>
+        <li><b>试探</b>：for 循环把每个未使用的 i 轮流放到末尾，递归下去。</li>
+        <li><b>撤销</b>：递归返回后 <code>remove + used=false</code>，把位置让出来给下一个 i。</li>
+      </ol>
+
+      <h3>看动画时盯什么</h3>
+      <ul>
+        <li>搜索树自上而下逐个点亮：紫色描边 = 当前 dfs 节点，黄边 = 来时的路径，绿色 = 已收集的叶子。</li>
+        <li>右侧代码随步骤高亮：<code>if</code> 判满 / <code>continue</code> 跳过 / <code>add</code> 做选择 / <code>remove</code> 撤销，当前 <code>i</code> 显示在代码上方。</li>
+        <li>每次 <span style="color:var(--warn)">backtrack</span> 之后，树上回到父节点、path 缩短一格、used 恢复 false —— 这就是"回溯"。</li>
+      </ul>
+
+      <h3>复杂度</h3>
+      <ul>
+        <li>时间：共 n! 种排列，每种长 n → <code>O(n · n!)</code>。</li>
+        <li>空间：递归深度 n + used 数组 n → <code>O(n)</code>（不计 res）。</li>
+      </ul>
+    </section>
+  </div>
+
+  <script>
+    let nums = [1, 2, 3];
+    let steps = [];
+    let nodes = [];   // 搜索树全部节点：{id, parent, depth, idx, val, foundOrder, created}
+    let layout = null;
+    let stepIndex = 0;
+    let playing = false;
+    let timer = null;
+
+    // 按你的 Java dfs 逐行生成可视化步骤（含快照，渲染时只读快照）
+    // 每次 dfs() 调用 = 树上一个节点，nodeId 记在每个步骤里供高亮
+    function buildSteps(arr) {
+      steps.length = 0;
+      nodes = [];
+      const n = arr.length;
+      const path = [];
+      const used = new Array(n).fill(false);
+      const res = [];
+      const frames = []; // 递归栈里的已选下标
+      const nstk = [];   // 树节点栈，栈顶 = 当前执行的 dfs 节点
+      let k = 0;
+      let foundCount = 0;
+      const snap = () => ({
+        path: [...path], used: [...used],
+        res: res.map(r => [...r]), frames: [...frames],
+        found: foundCount, nodeId: nstk.length ? nstk[nstk.length - 1] : -1
+      });
+
+      function dfs(parentId, idx) {
+        const id = nodes.length;
+        nodes.push({ id, parent: parentId, depth: path.length,
+          idx, val: idx < 0 ? null : arr[idx], foundOrder: 0, created: k });
+        nstk.push(id);
+        steps.push({ k: k++, kind: 'enter', depth: path.length, i: -1,
+          ...snap(), msg: `进入 dfs，path=${JSON.stringify(path)}` });
+        if (path.length === n) {
+          foundCount++;
+          nodes[id].foundOrder = foundCount;
+          res.push([...path]);
+          steps.push({ k: k++, kind: 'found', depth: path.length, i: -1,
+            path: [...path], used: [...used],
+            res: res.map(r => [...r]), frames: [...frames],
+            found: foundCount, nodeId: id,
+            msg: `path 满 ${n} 个 → 收集 ${JSON.stringify(path)}（第 ${foundCount} 组）` });
+          nstk.pop();
+          return;
+        }
+        for (let i = 0; i < n; i++) {
+          if (used[i]) {
+            steps.push({ k: k++, kind: 'skip', depth: path.length, i,
+              ...snap(), msg: `i=${i}：used[${i}]=true → continue 跳过` });
+            continue;
+          }
+          steps.push({ k: k++, kind: 'choose', depth: path.length, i, val: arr[i],
+            ...snap(), msg: `i=${i}：选 nums[${i}]=${arr[i]} → path.add` });
+          path.push(arr[i]);
+          used[i] = true;
+          frames.push(i);
+          dfs(id, i);
+          frames.pop();
+          const v = path.pop();
+          used[i] = false;
+          steps.push({ k: k++, kind: 'back', depth: path.length, i, val: v,
+            path: [...path], used: [...used],
+            res: res.map(r => [...r]), frames: [...frames],
+            found: foundCount, nodeId: id,
+            msg: `回溯：撤销 nums[${i}]=${v}（remove + used[${i}]=false）` });
+        }
+        nstk.pop();
+      }
+      dfs(-1, -1);
+      buildLayout();
+    }
+
+    // 树布局：叶子横向排布，父节点 x = 孩子均值
+    function buildLayout() {
+      const n = nums.length;
+      const kids = nodes.map(() => []);
+      nodes.forEach(nd => { if (nd.parent >= 0) kids[nd.parent].push(nd.id); });
+      const slotW = n >= 3 ? 96 : 150, topPad = 44, levelH = 86, padX = 46;
+      const leaves = nodes.filter(nd => nd.depth === n);
+      leaves.forEach((nd, j) => { nd.x = padX + (j + 0.5) * slotW; });
+      [...nodes].sort((a, b) => b.depth - a.depth).forEach(nd => {
+        if (nd.depth < n) {
+          const c = kids[nd.id];
+          nd.x = c.length ? c.reduce((s, cid) => s + nodes[cid].x, 0) / c.length : padX;
+        }
+        nd.y = topPad + nd.depth * levelH;
+      });
+      layout = { w: padX * 2 + leaves.length * slotW, h: topPad * 2 + n * levelH + 18 };
+    }
+
+    function leafPath(nd) {
+      const vals = [];
+      let cur = nd;
+      while (cur && cur.val != null) { vals.unshift(cur.val); cur = nodes[cur.parent]; }
+      return vals;
+    }
+
+    function renderTree(entry) {
+      const svg = document.getElementById('treeSvg');
+      const NS = 'http://www.w3.org/2000/svg';
+      svg.innerHTML = '';
+      svg.setAttribute('viewBox', `0 0 ${layout.w} ${layout.h}`);
+      const onPath = new Set();
+      let cur = entry.nodeId;
+      while (cur >= 0) { onPath.add(cur); cur = nodes[cur].parent; }
+      nodes.forEach(nd => {
+        if (nd.parent < 0) return;
+        const p = nodes[nd.parent];
+        const line = document.createElementNS(NS, 'line');
+        line.setAttribute('x1', p.x); line.setAttribute('y1', p.y);
+        line.setAttribute('x2', nd.x); line.setAttribute('y2', nd.y);
+        const revealed = nd.created <= entry.k;
+        line.setAttribute('class', 'edge' + (revealed && onPath.has(nd.id) ? ' on' : ''));
+        if (!revealed) line.setAttribute('opacity', '0.15');
+        svg.appendChild(line);
+      });
+      nodes.forEach(nd => {
+        const revealed = nd.created <= entry.k;
+        const g = document.createElementNS(NS, 'g');
+        g.setAttribute('opacity', revealed ? '1' : '0.22');
+        const c = document.createElementNS(NS, 'circle');
+        c.setAttribute('cx', nd.x); c.setAttribute('cy', nd.y); c.setAttribute('r', 20);
+        let cls = 'node';
+        if (nd.foundOrder && nd.foundOrder <= entry.found) cls += ' found';
+        else if (nd.id === entry.nodeId) cls += ' cur';
+        else if (revealed && onPath.has(nd.id)) cls += ' on';
+        c.setAttribute('class', cls);
+        g.appendChild(c);
+        const t = document.createElementNS(NS, 'text');
+        t.setAttribute('x', nd.x); t.setAttribute('y', nd.y + 5);
+        t.setAttribute('text-anchor', 'middle'); t.setAttribute('class', 'nlabel');
+        t.textContent = nd.val == null ? '∅' : nd.val;
+        g.appendChild(t);
+        if (nd.depth === nums.length && nd.depth > 0) {
+          const s = document.createElementNS(NS, 'text');
+          s.setAttribute('x', nd.x); s.setAttribute('y', nd.y + 40);
+          s.setAttribute('text-anchor', 'middle'); s.setAttribute('class', 'nsub');
+          const done = nd.foundOrder && nd.foundOrder <= entry.found;
+          s.textContent = (done ? '#' + nd.foundOrder + ' ' : '') + '[' + leafPath(nd).join(',') + ']';
+          g.appendChild(s);
+        }
+        svg.appendChild(g);
+      });
+    }
+
+    // 步骤 → 代码行映射：起作用的行高亮，其余变暗
+    const CODE_LINES = {
+      enter: ['D1'], choose: ['D6', 'D7'], skip: ['D5'],
+      found: ['D2', 'D3'], back: ['D9', 'D10']
+    };
+    function renderCode(entry) {
+      const act = CODE_LINES[entry.kind] || [];
+      document.querySelectorAll('#codeBlock .cl[data-l]').forEach(d => {
+        const on = act.includes(d.dataset.l);
+        d.classList.toggle('on', on);
+        d.classList.toggle('dim', !on);
+      });
+      document.getElementById('codeState').innerHTML = entry.i >= 0
+        ? `当前 <b>${entry.kind}</b> · 循环变量 <b>i = ${entry.i}</b> · path = [${entry.path.join(', ')}]`
+        : `当前 <b>${entry.kind}</b> · path = [${entry.path.join(', ')}]`;
+    }
+
+    function renderNums(entry) {
+      const box = document.getElementById('numsGrid');
+      box.innerHTML = '';
+      nums.forEach((v, i) => {
+        const d = document.createElement('div');
+        d.className = 'num-cell';
+        if (entry.kind === 'skip' && entry.i === i) d.classList.add('skipped');
+        else if (entry.i === i && (entry.kind === 'choose' || entry.kind === 'back')) d.classList.add('trying');
+        if (entry.used[i]) d.classList.add('used');
+        d.innerHTML = `<div class="idx">i = ${i}</div><div class="val">${v}</div>` +
+          `<div class="used-tag">used = ${entry.used[i]}</div>`;
+        box.appendChild(d);
+      });
+    }
+
+    function renderPath(entry) {
+      const box = document.getElementById('pathRow');
+      box.innerHTML = '';
+      if (!entry.path.length) {
+        const s = document.createElement('span');
+        s.className = 'path-empty';
+        s.textContent = 'path = []（空）';
+        box.appendChild(s);
+        return;
+      }
+      entry.path.forEach((v, j) => {
+        const d = document.createElement('div');
+        d.className = 'path-slot filled' + (j === entry.path.length - 1 ? ' cursor' : '');
+        d.textContent = v;
+        d.title = 'path[' + j + ']';
+        box.appendChild(d);
+        if (j < entry.path.length - 1) {
+          const a = document.createElement('span');
+          a.className = 'path-arrow';
+          a.textContent = '→';
+          box.appendChild(a);
+        }
+      });
+    }
+
+    function renderRes(entry) {
+      const box = document.getElementById('resList');
+      box.innerHTML = '';
+      if (!entry.res.length) {
+        const s = document.createElement('div');
+        s.className = 'res-empty';
+        s.textContent = 'res = []（还没收集到完整排列）';
+        box.appendChild(s);
+        return;
+      }
+      entry.res.forEach((r, j) => {
+        const d = document.createElement('div');
+        d.className = 'res-item' + (entry.kind === 'found' && j === entry.res.length - 1 ? ' done' : '');
+        d.textContent = `#${j + 1}  [${r.join(', ')}]${entry.kind === 'found' && j === entry.res.length - 1 ? '  ← 刚收集' : ''}`;
+        box.appendChild(d);
+      });
+    }
+
+    function renderStack(entry) {
+      const box = document.getElementById('stackBox');
+      box.innerHTML = '';
+      if (!entry.frames.length && entry.depth === 0) {
+        box.innerHTML = '<div class="top">dfs(depth=0) ← 当前</div>';
+        return;
+      }
+      entry.frames.forEach((fi, d) => {
+        const div = document.createElement('div');
+        const isTop = d === entry.frames.length - 1;
+        if (isTop) div.className = 'top';
+        div.textContent = `${isTop ? '▶ ' : '　'}dfs(depth=${d + 1}) 选了 nums[${fi}]=${nums[fi]}${isTop ? ' ← 当前' : ''}`;
+        box.appendChild(div);
+      });
+      const cur = document.createElement('div');
+      cur.className = 'top';
+      cur.textContent = entry.kind === 'found'
+        ? `✔ 到达叶子 depth=${entry.depth}，收集后返回`
+        : `… 当前层 depth=${entry.depth} 正在 for(i) 试探`;
+      box.appendChild(cur);
+    }
+
+    function renderFormula(entry) {
+      const box = document.getElementById('formulaBox');
+      const titles = {
+        enter: '进入 dfs：先判满，再 for 试探',
+        choose: '做选择：path.add + used=true',
+        skip: '剪枝：used → continue',
+        found: '终止：收集一份拷贝',
+        back: '撤销选择：remove + used=false'
+      };
+      let body = '';
+      if (entry.kind === 'enter') {
+        body = `if (<b>path.size()=${entry.path.length}</b> == n=${nums.length})？` +
+          (entry.path.length === nums.length
+            ? ' <span class="highlight">成立 → 收集</span>'
+            : ' <span class="math">不成立 → 进入 for(i=0..n-1)</span>');
+      } else if (entry.kind === 'choose') {
+        body = `i=<b>${entry.i}</b>，used=${entry.used[entry.i]} → ` +
+          `<span class="math">path.add(${entry.val})</span>，used[${entry.i}]=true，递归填下一位`;
+      } else if (entry.kind === 'skip') {
+        body = `i=<b>${entry.i}</b>，used[${entry.i}]=<b>true</b> → ` +
+          `<span class="no">continue</span>（${nums[entry.i]} 已在 path 里，不能重用）`;
+      } else if (entry.kind === 'found') {
+        body = `<span class="highlight">res.add(new ArrayList<>([${entry.path.join(', ')}]))</span>` +
+          ` —— 必须是<span class="math">拷贝</span>，否则后续 remove 会污染结果`;
+      } else {
+        body = `递归返回 → <span class="math">path.remove(末尾 ${entry.val})</span>，` +
+          `used[${entry.i}]=false，把位置让给下一个 i`;
+      }
+      box.innerHTML = `<div class="formula-title">${titles[entry.kind]} · Step ${entry.k + 1}/${steps.length}</div>` +
+        `<div class="formula-content">${body}</div>`;
+    }
+
+    function renderChips(entry) {
+      document.getElementById('stepInfo').innerHTML = `Step <b>${entry.k + 1} / ${steps.length}</b>`;
+      document.getElementById('depthInfo').innerHTML = `depth: <b>${entry.depth}</b>`;
+      document.getElementById('pathInfo').innerHTML = `path: <b>[${entry.path.join(', ')}]</b>`;
+      document.getElementById('resInfo').innerHTML = `res: <b>${entry.res.length} 组</b>`;
+    }
+
+    function renderStep(idx) {
+      const entry = steps[idx];
+      if (!entry) return;
+      renderChips(entry);
+      renderFormula(entry);
+      renderTree(entry);
+      renderCode(entry);
+      renderNums(entry);
+      renderPath(entry);
+      renderRes(entry);
+      renderStack(entry);
+    }
+
+    function renderLog(entry) {
+      const box = document.getElementById('log');
+      const div = document.createElement('div');
+      const cls = { enter: 'k-enter', choose: 'k-choose', found: 'k-found', back: 'k-back', skip: 'k-skip' }[entry.kind];
+      div.className = cls;
+      div.textContent = `Step ${entry.k + 1} [${entry.kind}] depth=${entry.depth} ${entry.msg}`;
+      box.appendChild(div);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function resetAll() {
+      stepIndex = 0;
+      document.getElementById('log').innerHTML = '';
+      const init = { k: -1, kind: 'enter', depth: 0, i: -1,
+        path: [], used: nums.map(() => false), res: [], frames: [] };
+      renderChips({ ...init, k: -1 });
+      document.getElementById('stepInfo').innerHTML = `Step <b>0 / ${steps.length}</b>`;
+      document.getElementById('depthInfo').innerHTML = 'depth: <b>-</b>';
+      document.getElementById('pathInfo').innerHTML = 'path: <b>[]</b>';
+      document.getElementById('resInfo').innerHTML = 'res: <b>0 组</b>';
+      document.getElementById('formulaBox').innerHTML =
+        '<div class="formula-title">就绪：dfs(nums)，path=[]，used 全 false</div>' +
+        `<div class="formula-content">共 <b>${steps.length}</b> 步。点击「下一步」从 dfs(depth=0) 开始。</div>`;
+      renderNums(init);
+      renderPath(init);
+      renderRes(init);
+      renderStack(init);
+      renderTree({ k: -1, nodeId: -1, found: 0 });
+      document.querySelectorAll('#codeBlock .cl[data-l]').forEach(d => d.classList.remove('on', 'dim'));
+      document.getElementById('codeState').textContent = '等待开始…';
+    }
+
+    function nextStep() {
+      if (stepIndex >= steps.length) return;
+      const entry = steps[stepIndex];
+      renderStep(stepIndex);
+      renderLog(entry);
+      stepIndex++;
+      if (stepIndex >= steps.length) stopPlay();
+    }
+
+    function prevStep() {
+      if (stepIndex <= 0) return;
+      stepIndex = Math.max(0, stepIndex - 1);
+      document.getElementById('log').innerHTML = '';
+      for (let i = 0; i < stepIndex; i++) renderLog(steps[i]);
+      if (stepIndex === 0) { resetAll(); return; }
+      renderStep(stepIndex - 1);
+    }
+
+    function play() {
+      if (playing) return;
+      playing = true;
+      document.getElementById('btnPlay').textContent = '暂停';
+      timer = setInterval(() => nextStep(), 800);
+    }
+
+    function stopPlay() {
+      playing = false;
+      document.getElementById('btnPlay').textContent = '自动播放';
+      if (timer) clearInterval(timer);
+      timer = null;
+    }
+
+    function switchNums(arr, btnOn, btnOff) {
+      stopPlay();
+      nums = arr;
+      document.getElementById(btnOn).className = 'active-mode';
+      document.getElementById(btnOff).className = 'ghost';
+      buildSteps(nums);
+      resetAll();
+    }
+
+    document.getElementById('btnNext').addEventListener('click', nextStep);
+    document.getElementById('btnPrev').addEventListener('click', prevStep);
+    document.getElementById('btnPlay').addEventListener('click', () => {
+      if (playing) stopPlay();
+      else play();
+    });
+    document.getElementById('btnReset').addEventListener('click', () => {
+      stopPlay();
+      resetAll();
+    });
+    document.getElementById('btnN3').addEventListener('click', () => switchNums([1, 2, 3], 'btnN3', 'btnN2'));
+    document.getElementById('btnN2').addEventListener('click', () => switchNums([1, 2], 'btnN2', 'btnN3'));
+
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.key === 'ArrowLeft') { prevStep(); e.preventDefault(); }
+      else if (e.key === 'ArrowRight') { nextStep(); e.preventDefault(); }
+      else if (e.key === ' ') {
+        if (playing) stopPlay();
+        else play();
+        e.preventDefault();
+      }
+    });
+
+    buildSteps(nums);
+    resetAll();
+  </script>
+</body>
+</html>

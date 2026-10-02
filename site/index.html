@@ -306,8 +306,8 @@
         <p class="lead">按官方 17 类题型归档，从双指针、单调栈、二叉树到多维动态规划，每题独立成页、逐帧回放。</p>
 
         <div class="stats" id="cover">
-          <div class="stat"><b>34</b><span>可视化页面</span></div>
-          <div class="stat"><b>21</b><span>已覆盖官方热题</span></div>
+          <div class="stat"><b>36</b><span>可视化页面</span></div>
+          <div class="stat"><b>23</b><span>已覆盖官方热题</span></div>
           <div class="stat"><b>9</b><span>建档题型 / 17</span></div>
           <div class="stat"><b>7</b><span>难度 Hard</span></div>
         </div>
@@ -392,7 +392,13 @@
       ]
     },
     { id: 'graph', name: '图论' },
-    { id: 'backtracking', name: '回溯' },
+    {
+      id: 'backtracking', name: '回溯', desc: '试探一条路、走不通就退回，用 path 与 used 记录选择。',
+      sub: [{
+        id: 'bt-perm', name: '全排列', note: 'used 防重用，选入 path 后递归，返回时撤销',
+        items: [{ n: '46', zh: '全排列', en: 'Permutations', lv: 'Medium', hot: true, href: '回溯/0046_permutations.html' }]
+      }]
+    },
     { id: 'binary-search', name: '二分查找' },
     {
       id: 'stack', name: '栈', desc: '用栈保存待决元素，等更优条件出现时结算。',
