@@ -49,7 +49,7 @@
 
     --shell: 1080px;
     --bar-h: 52px;
-    --toc-w: 292px;
+    --toc-w: 312px;
     --ease: cubic-bezier(.28, .11, .32, 1);
   }
 
@@ -109,13 +109,15 @@
     border-right: 1px solid rgba(0, 0, 0, .08);
     scrollbar-width: thin;
   }
-  .toc .label { padding-left: var(--s-xs); font-size: 12px; letter-spacing: -.12px; color: var(--muted); }
+  /* 侧栏是可扫读的导航面，字号不小于 13px 且一律用正常字距：
+     负字距只适用于大标题，套在小字上会明显降低辨识度 */
+  .toc .label { padding-left: var(--s-xs); font-size: 13px; letter-spacing: 0; color: var(--muted); }
 
-  .toc details { margin-top: 2px; }
+  .toc details { margin-top: 3px; }
   .toc summary {
-    display: flex; align-items: center; gap: 6px;
-    padding: 6px var(--s-xs); border-radius: var(--r-sm);
-    font-size: 14px; font-weight: 600; letter-spacing: -.224px; color: var(--ink);
+    display: flex; align-items: center; gap: 7px;
+    padding: 7px var(--s-xs); border-radius: var(--r-sm);
+    font-size: 16px; font-weight: 600; letter-spacing: 0; color: var(--ink);
     cursor: pointer; list-style: none;
     -webkit-tap-highlight-color: transparent;
   }
@@ -123,31 +125,31 @@
   .toc summary:hover { background: rgba(0, 0, 0, .05); }
   .toc summary .caret {
     flex: none; width: 0; height: 0;
-    border-left: 4px solid var(--muted); border-top: 4px solid transparent; border-bottom: 4px solid transparent;
+    border-left: 5px solid var(--muted); border-top: 4.5px solid transparent; border-bottom: 4.5px solid transparent;
     transition: transform .18s var(--ease);
   }
   .toc details[open] > summary .caret { transform: rotate(90deg); }
-  .toc summary .cnt { margin-left: auto; font: 400 11px/1 var(--mono); letter-spacing: 0; color: var(--muted-2); }
-  .toc details.empty > summary { color: var(--muted-2); font-weight: 400; cursor: default; }
+  .toc summary .cnt { margin-left: auto; font: 400 12px/1 var(--mono); letter-spacing: 0; color: var(--muted-2); }
+  .toc details.empty > summary { color: var(--muted); font-weight: 400; cursor: default; }
   .toc details.empty > summary:hover { background: none; }
   .toc details.empty .caret { border-left-color: var(--hairline); }
-  .toc details.empty .cnt { color: var(--hairline); }
+  .toc details.empty .cnt { color: var(--hairline); font-size: 12px; }
   .toc details.active > summary { color: var(--blue); }
 
-  .toc .kids { padding-left: var(--s-md); }
+  .toc .kids { padding-left: var(--s-sm); }
   .toc a.t-sub {
-    display: block; margin-top: 2px; padding: 4px var(--s-xs);
-    font-size: 12px; letter-spacing: -.12px; color: var(--muted);
+    display: block; margin-top: 3px; padding: 5px var(--s-xs);
+    font-size: 13px; font-weight: 600; letter-spacing: 0; color: var(--ink-80);
   }
   .toc a.t-sub:hover { color: var(--blue); text-decoration: none; }
-  .toc a.t-sub[aria-current="true"] { color: var(--blue); font-weight: 600; }
+  .toc a.t-sub[aria-current="true"] { color: var(--blue); }
   .toc a.t-prob {
-    display: flex; gap: 7px; align-items: baseline;
-    padding: 4px var(--s-xs) 4px var(--s-sm); border-radius: var(--r-sm);
-    font-size: 14px; letter-spacing: -.224px; line-height: 1.35; color: var(--ink-80);
+    display: flex; gap: 8px; align-items: baseline;
+    padding: 6px var(--s-xs) 6px var(--s-sm); border-radius: var(--r-sm);
+    font-size: 15px; letter-spacing: 0; line-height: 1.4; color: var(--ink);
   }
   .toc a.t-prob:hover { background: rgba(0, 0, 0, .05); color: var(--link); text-decoration: none; }
-  .toc .t-num { flex: none; width: 34px; font: 400 11px/1.5 var(--mono); letter-spacing: 0; color: var(--muted-2); }
+  .toc .t-num { flex: none; width: 38px; font: 400 12px/1.4 var(--mono); letter-spacing: 0; color: var(--muted); }
   .toc .t-zh { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   .main { flex: 1; min-width: 0; }
