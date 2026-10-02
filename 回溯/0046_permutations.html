@@ -26,23 +26,34 @@
       min-height: 100vh;
     }
     header {
-      padding: 32px 20px 10px;
+      padding: 16px 20px 6px;
       text-align: center;
+      flex: none;
     }
     header h1 {
-      margin: 0 0 8px;
-      font-size: 28px;
+      margin: 0 0 6px;
+      font-size: 24px;
       background: linear-gradient(to right, var(--accent), var(--accent-2));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
-    header p { margin: 0; color: var(--muted); }
+    header p { margin: 0; color: var(--muted); font-size: 13px; }
+
+    .toolbar {
+      flex: none;
+      display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px;
+      padding: 8px 20px;
+      border-bottom: 1px solid #24283b;
+      background: rgba(22, 22, 30, .6);
+    }
+    .toolbar .push { margin-left: auto; }
+
     .container {
       max-width: 1100px;
       margin: 0 auto;
       padding: 20px;
       display: grid;
-      grid-template-columns: 1.2fr 1fr;
+      grid-template-columns: 1fr;
       gap: 20px;
     }
     .panel {
@@ -51,6 +62,29 @@
       border-radius: 16px;
       padding: 16px;
       box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    .panel > h3 { margin: 18px 0 6px; font-size: 14px; color: var(--muted); }
+    .panel > h3:first-child { margin-top: 0; }
+
+    /* 宽屏＝一屏横版：页面本身不滚，三栏各自内部滚动 */
+    @media (min-width: 1100px) {
+      html, body { height: 100%; }
+      body {
+        display: flex; flex-direction: column;
+        overflow: hidden; min-height: 0;
+      }
+      .container {
+        flex: 1 1 auto; min-height: 0;
+        max-width: none; margin: 0; padding: 12px 16px;
+        grid-template-columns: minmax(0, 1.3fr) minmax(0, .95fr) minmax(0, 1.05fr);
+        gap: 14px;
+      }
+      .panel { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+      .tree-wrap { overflow-x: auto; }
+      #treeSvg { min-width: 420px; }
+      .res-list { max-height: 24vh; overflow-y: auto; }
+      .log { max-height: none; }
+      .kbd-hint { flex: none; padding-bottom: 8px; margin-top: 0; }
     }
     .controls {
       display: flex;
@@ -283,36 +317,34 @@
     <p>示例：nums = [1, 2, 3] &rarr; 共 3! = 6 种排列 &nbsp;|&nbsp; 用 &larr; &rarr; 逐帧推进，空格自动播放</p>
   </header>
 
+  <div class="toolbar">
+    <div class="controls">
+      <button id="btnPrev">上一步</button>
+      <button id="btnNext">下一步</button>
+      <button id="btnPlay" class="secondary">自动播放</button>
+      <button id="btnReset" class="ghost">重置</button>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <button id="btnN3" class="active-mode" style="padding: 6px 12px; font-size: 13px;">nums = [1,2,3]</button>
+      <button id="btnN2" class="ghost" style="padding: 6px 12px; font-size: 13px;">nums = [1,2]</button>
+    </div>
+    <div class="controls push">
+      <span class="chip" id="stepInfo">Step 0</span>
+      <span class="chip" id="depthInfo">depth: -</span>
+      <span class="chip" id="pathInfo">path: []</span>
+      <span class="chip" id="resInfo">res: 0 组</span>
+    </div>
+    <div class="legend" style="margin: 0;">
+      <span><i class="dot try"></i>正在试探下标 i</span>
+      <span><i class="dot used"></i>used[i] = true（已选）</span>
+      <span><i class="dot skip"></i>跳过（used，直接 continue）</span>
+      <span><i class="dot cur"></i>树上当前 dfs 节点</span>
+      <span><i class="dot found"></i>已收集的叶子（完整排列）</span>
+    </div>
+  </div>
+
   <div class="container">
-    <section class="panel">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
-        <div class="controls">
-          <button id="btnPrev">上一步</button>
-          <button id="btnNext">下一步</button>
-          <button id="btnPlay" class="secondary">自动播放</button>
-          <button id="btnReset" class="ghost">重置</button>
-        </div>
-        <div style="display: flex; gap: 8px;">
-          <button id="btnN3" class="active-mode" style="padding: 6px 12px; font-size: 13px;">nums = [1,2,3]</button>
-          <button id="btnN2" class="ghost" style="padding: 6px 12px; font-size: 13px;">nums = [1,2]</button>
-        </div>
-      </div>
-
-      <div class="controls" style="margin-bottom: 4px;">
-        <span class="chip" id="stepInfo">Step 0</span>
-        <span class="chip" id="depthInfo">depth: -</span>
-        <span class="chip" id="pathInfo">path: []</span>
-        <span class="chip" id="resInfo">res: 0 组</span>
-      </div>
-
-      <div class="legend">
-        <span><i class="dot try"></i>正在试探下标 i</span>
-        <span><i class="dot used"></i>used[i] = true（已选）</span>
-        <span><i class="dot skip"></i>跳过（used，直接 continue）</span>
-        <span><i class="dot cur"></i>树上当前 dfs 节点</span>
-        <span><i class="dot found"></i>已收集的叶子（完整排列）</span>
-      </div>
-
+    <section class="panel col-tree">
       <div id="formulaBox" class="formula-display">
         <div class="formula-title">等待开始…</div>
         <div class="formula-content">点击「下一步」进入 dfs。</div>
@@ -326,7 +358,9 @@
 
       <h3>③ path（已选路径，深度 = path.size()）</h3>
       <div class="path-row" id="pathRow"></div>
+    </section>
 
+    <section class="panel col-state">
       <h3>④ res（收集到的完整排列）</h3>
       <div class="res-list" id="resList"></div>
 
@@ -335,11 +369,9 @@
 
       <h3>操作日志（对照你的 dfs 代码）</h3>
       <div class="log" id="log"></div>
-      <div class="footer-note">for 循环按 i = 0 → n-1 依次试探：used 跳过 → 选入 path → 递归 → 撤销（remove + used=false）。</div>
-      <div class="kbd-hint">&larr; 上一步 &nbsp; &rarr; 下一步 &nbsp; 空格 播放 / 暂停</div>
     </section>
 
-    <section class="panel explain">
+    <section class="panel explain col-code">
       <h3>你的代码在干什么</h3>
       <div class="code-state" id="codeState">等待开始…</div>
       <div class="code-block" id="codeBlock"><div class="cl"><span class="keyword">class</span> Solution {</div><div class="cl">    <span class="type">List</span>&lt;<span class="type">List</span>&lt;<span class="type">Integer</span>&gt;&gt; res = <span class="keyword">new</span> <span class="type">ArrayList</span>&lt;&gt;();</div><div class="cl">    <span class="type">List</span>&lt;<span class="type">Integer</span>&gt; path = <span class="keyword">new</span> <span class="type">ArrayList</span>&lt;&gt;();</div><div class="cl">    <span class="keyword">boolean</span>[] used;</div><div class="cl">    <span class="keyword">public</span> <span class="type">List</span>&lt;<span class="type">List</span>&lt;<span class="type">Integer</span>&gt;&gt; <span class="method">permute</span>(<span class="keyword">int</span>[] nums) {</div><div class="cl">        used = <span class="keyword">new</span> <span class="keyword">boolean</span>[nums.length];</div><div class="cl">        <span class="method">dfs</span>(nums);</div><div class="cl">        <span class="keyword">return</span> res;</div><div class="cl">    }</div><div class="cl">    <span class="keyword">public void</span> <span class="method">dfs</span>(<span class="keyword">int</span>[] nums){</div><div class="cl" data-l="D1">        <span class="keyword">if</span>(path.<span class="method">size</span>() == nums.length){</div><div class="cl" data-l="D2">            res.<span class="method">add</span>(<span class="keyword">new</span> <span class="type">ArrayList</span>&lt;&gt;(path));</div><div class="cl" data-l="D3">            <span class="keyword">return</span>;</div><div class="cl">        }</div><div class="cl" data-l="D4">        <span class="keyword">for</span>(<span class="keyword">int</span> i = <span class="num">0</span>; i &lt; nums.length; i++){</div><div class="cl" data-l="D5">            <span class="keyword">if</span>(used[i]) <span class="keyword">continue</span>;</div><div class="cl" data-l="D6">            path.<span class="method">add</span>(nums[i]);</div><div class="cl" data-l="D7">            used[i] = <span class="keyword">true</span>;</div><div class="cl" data-l="D8">            <span class="method">dfs</span>(nums);</div><div class="cl" data-l="D9">            path.<span class="method">remove</span>(path.<span class="method">size</span>() - <span class="num">1</span>);</div><div class="cl" data-l="D10">            used[i] = <span class="keyword">false</span>;</div><div class="cl">        }</div><div class="cl">    }</div><div class="cl">}</div></div>
@@ -365,8 +397,12 @@
         <li>时间：共 n! 种排列，每种长 n → <code>O(n · n!)</code>。</li>
         <li>空间：递归深度 n + used 数组 n → <code>O(n)</code>（不计 res）。</li>
       </ul>
+
+      <div class="footer-note">for 循环按 i = 0 → n-1 依次试探：used 跳过 → 选入 path → 递归 → 撤销（remove + used=false）。</div>
     </section>
   </div>
+
+  <div class="kbd-hint">&larr; 上一步 &nbsp; &rarr; 下一步 &nbsp; 空格 播放 / 暂停</div>
 
   <script>
     let nums = [1, 2, 3];
