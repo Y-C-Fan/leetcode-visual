@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>394. 字符串解码可视化</title>
+  <style>
+    :root {
+      --bg: #1a1b26;
+      --panel: #24283b;
+      --card: #292e42;
+      --text: #a9b1d6;
+      --muted: #565f89;
+      --accent: #bb9af7;
+      --accent-2: #7aa2f7;
+      --good: #9ece6a;
+      --warn: #e0af68;
+      --bad: #f7768e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: radial-gradient(circle at 50% 0%, #24283b, var(--bg));
+      color: var(--text);
+      min-height: 100vh;
+    }
+    header { padding: 14px 20px 6px; text-align: center; flex: none; }
+    header h1 {
+      margin: 0 0 6px; font-size: 24px;
+      background: linear-gradient(to right, var(--accent), var(--accent-2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    header p { margin: 0; color: var(--muted); font-size: 13px; }
+
+    .toolbar {
+      flex: none;
+      display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px;
+      padding: 8px 20px;
+      border-bottom: 1px solid #24283b;
+      background: rgba(22, 22, 30, .6);
+    }
+    .toolbar .push { margin-left: auto; }
+    .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    button {
+      background: var(--accent); border: none; color: #1a1b26;
+      padding: 8px 14px; border-radius: 10px; font-weight: 600;
+      cursor: pointer; transition: all 0.2s ease;
+    }
+    button:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    button.secondary { background: var(--accent-2); color: #1a1b26; }
+    button.ghost { background: transparent; color: var(--text); border: 1px solid #414868; }
+    button.active-mode { background: var(--accent-2); color: #1a1b26; }
+    .preset { padding: 6px 11px; font-size: 13px; font-family: ui-monospace, Menlo, Consolas, monospace; }
+    #caseInput {
+      background: #16161e; border: 1px solid #414868; border-radius: 8px;
+      color: var(--text); padding: 7px 10px; width: 210px;
+      font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px;
+    }
+    #caseInput:focus { outline: none; border-color: var(--accent-2); }
+    .chip {
+      background: #24283b; border: 1px solid #414868; padding: 6px 10px;
+      border-radius: 999px; color: var(--muted); font-size: 12px;
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+    }
+    .chip b { color: var(--text); font-weight: 600; }
+    .warn-txt { color: var(--bad); font-size: 12px; }
+
+    .container {
+      max-width: 1100px; margin: 0 auto; padding: 20px;
+      display: grid; grid-template-columns: 1fr; gap: 20px;
+    }
+    .panel {
+      background: var(--panel); border: 1px solid #24283b; border-radius: 16px;
+      padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    .panel > h3 { margin: 18px 0 6px; font-size: 14px; color: var(--muted); }
+    .panel > h3:first-child { margin-top: 0; }
+
+    /* 宽屏＝一屏横版：页面本身不滚，三栏各自内部滚动 */
+    @media (min-width: 1100px) {
+      html, body { height: 100%; }
+      body { display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+      .container {
+        flex: 1 1 auto; min-height: 0;
+        max-width: none; margin: 0; padding: 12px 16px;
+        grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1.05fr);
+        gap: 14px;
+      }
+      .panel { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+      .col-state { display: flex; flex-direction: column; }
+      .col-state .log { flex: 1 1 0; min-height: 60px; max-height: none; }
+      .col-state .footer-note { flex: none; }
+      .kbd-hint { flex: none; padding-bottom: 8px; margin-top: 0; }
+    }
+
+    .formula-display {
+      background: #1a1b26; border: 1px solid #414868; border-radius: 12px;
+      padding: 14px 16px; margin-bottom: 4px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: var(--text);
+    }
+    .formula-title {
+      font-size: 15px; font-weight: 800; color: var(--accent); margin-bottom: 10px;
+      padding-bottom: 8px; border-bottom: 2px solid #2d2d3d; letter-spacing: .5px;
+    }
+    .formula-content { font-size: 13.5px; line-height: 1.75; overflow-wrap: anywhere; }
+    .formula-content b { color: var(--accent); }
+    .formula-content .highlight { color: var(--good); font-weight: bold; }
+    .formula-content .math { color: var(--warn); }
+    .formula-content .no { color: var(--bad); }
+    .why {
+      margin-top: 10px; padding: 7px 10px; border-left: 3px solid var(--warn);
+      background: rgba(224, 175, 104, .07); border-radius: 0 8px 8px 0;
+      font-size: 12.5px; line-height: 1.65; color: var(--text);
+      font-family: ui-sans-serif, system-ui, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    .why b { color: var(--warn); }
+    .why .em { color: var(--good); }
+
+    /* 输入带 */
+    .tape { display: flex; gap: 2px; overflow-x: auto; padding-bottom: 4px; }
+    .tape.dense { gap: 1px; }
+    .tcell {
+      flex: 1 1 0; min-width: 13px; text-align: center;
+      background: var(--card); border: 1px solid #2d2d3d; border-radius: 7px;
+      padding: 5px 1px 3px; transition: all .2s ease;
+    }
+    .tcell .c { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 16px; font-weight: 700; line-height: 1.2; }
+    .tcell .x { font-size: 9px; color: var(--muted); font-family: ui-monospace, Menlo, Consolas, monospace; }
+    .tape.dense .tcell .c { font-size: 12.5px; }
+    .tape.dense .tcell { padding: 4px 0 2px; }
+    .tcell.dg .c { color: var(--warn); }
+    .tcell.br .c { color: var(--accent-2); }
+    .tcell.al .c { color: var(--text); }
+    .tcell.passed { opacity: .38; }
+    .tcell.now { background: #2f334d; border-color: var(--accent); opacity: 1; box-shadow: 0 0 10px rgba(187,154,247,.35); }
+    .tcell.now .c { color: #fff; }
+    .tcell.lv1 { border-left: 3px solid #3b4261; }
+    .tcell.lv2 { border-left: 3px solid #4a5375; }
+    .tcell.lv3 { border-left: 3px solid #5c688f; }
+    .tcell.lv4 { border-left: 3px solid #6f7ba3; }
+
+    /* 嵌套轨道 */
+    .svg-wrap { overflow-x: auto; background: #16161e; border: 1px solid #24283b; border-radius: 12px; padding: 6px; }
+    #groupSvg { display: block; width: 100%; }
+    #groupSvg .arc { fill: none; stroke: #414868; stroke-width: 2; stroke-linejoin: round; }
+    #groupSvg .arc.future { opacity: .3; }
+    #groupSvg .arc.folded { stroke: var(--good); opacity: .65; }
+    #groupSvg .arc.active { stroke: var(--accent); stroke-width: 3; }
+    #groupSvg .cnt { fill: var(--warn); font-size: 11px; font-weight: 700; font-family: ui-monospace, Menlo, Consolas, monospace; }
+    #groupSvg .cnt.folded { fill: var(--good); }
+    #groupSvg .cnt.active { fill: #fff; }
+    #groupSvg .plabel { fill: var(--muted); font-size: 10px; font-family: ui-monospace, Menlo, Consolas, monospace; }
+    #groupSvg .ptr { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 3; }
+    #groupSvg .root { stroke: #2f334d; stroke-width: 2; fill: none; }
+
+    /* cur 缓冲 */
+    .cur-row { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; min-height: 34px; }
+    .cch {
+      font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 14px;
+      background: var(--card); border: 1px solid #2d2d3d; border-radius: 6px;
+      padding: 3px 4px; min-width: 21px; text-align: center;
+    }
+    .cch.new { background: #223733; border-color: var(--good); color: var(--good); animation: fadein .35s ease; }
+    .cch.pre { background: #262c4a; border-color: var(--accent-2); color: var(--accent-2); }
+    .cch.keep { opacity: .8; }
+    .cur-sep { color: var(--muted); font-size: 15px; font-weight: 700; padding: 0 2px; }
+    .cur-empty { color: var(--muted); font-size: 13px; font-style: italic; }
+    .cur-tag { font-size: 11px; color: var(--muted); font-family: ui-monospace, Menlo, Consolas, monospace; }
+    .cur-tag.pre { color: var(--accent-2); }
+    .cur-tag.temp { color: var(--good); }
+    .answer {
+      margin-top: 8px; background: #223733; border: 1px solid var(--good);
+      border-radius: 10px; padding: 8px 10px; font-size: 13px; word-break: break-all;
+      font-family: ui-monospace, Menlo, Consolas, monospace; color: var(--good);
+    }
+
+    /* 双栈 */
+    .stacks { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .stack-col { background: #16161e; border: 1px solid #24283b; border-radius: 12px; padding: 8px; }
+    .stack-col h4 { margin: 0 0 6px; font-size: 12px; color: var(--accent-2); font-weight: 700; }
+    .stack-col h4 span { color: var(--muted); font-weight: 400; }
+    .sitem {
+      background: var(--card); border: 1px solid #2d2d3d; border-radius: 8px;
+      padding: 6px 8px; margin-bottom: 5px; text-align: center;
+      font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 14px;
+      word-break: break-all; transition: all .2s ease;
+    }
+    .sitem.top { border-color: var(--warn); background: #2f334d; }
+    .sitem.fresh { border-color: var(--accent); box-shadow: 0 0 10px rgba(187,154,247,.4); color: #fff; }
+    .sbottom { color: var(--muted); font-size: 11px; text-align: center; }
+    .sempty { color: var(--muted); font-size: 12px; font-style: italic; text-align: center; padding: 6px 0; }
+
+    /* ] 分支暂存 */
+    .tmp { display: grid; grid-template-columns: max-content 1fr; gap: 4px 10px; margin-top: 6px;
+      font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
+    .tmp dt { color: var(--muted); white-space: nowrap; }
+    .tmp dd { margin: 0; color: var(--text); word-break: break-all; }
+    .tmp dd.on { color: var(--good); }
+    .tmp dd.off { color: #3b4261; }
+
+    /* 四路分支判定 */
+    .branch { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .lane {
+      background: #16161e; border: 1px solid #24283b; border-radius: 10px;
+      padding: 5px 8px; transition: all .2s ease;
+    }
+    .lane .t {
+      font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px;
+      color: var(--muted); display: flex; align-items: baseline; gap: 5px;
+    }
+    .lane .t .no { color: var(--muted); font-weight: 700; flex: none; }
+    .lane .t::after { margin-left: auto; white-space: nowrap; font-size: 11px; flex: none; }
+    .lane .a { font-size: 11.5px; color: #3b4261; margin-top: 2px; font-family: ui-monospace, Menlo, Consolas, monospace; }
+    .lane.hit { border-color: var(--accent); background: #2f334d; }
+    .lane.hit .t { color: #fff; }
+    .lane.hit .a { color: var(--good); }
+    .lane.hit .t::after { content: '✓ 走这条'; color: var(--good); }
+    .lane.miss { opacity: .55; }
+    .lane.miss .t::after { content: '✗ 不成立'; color: var(--bad); }
+    .lane.skip { opacity: .32; }
+    .lane.skip .t::after { content: '— 短路'; color: var(--muted); }
+    .lane.na { opacity: .35; }
+    .lane.na .t::after { content: ''; }
+    .branch-note { font-size: 11.5px; color: var(--muted); margin-top: 5px; }
+
+    /* 本步变量变化 */
+    .delta { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; min-height: 28px; }
+    .dchip {
+      background: var(--card); border: 1px solid #2d2d3d; border-radius: 8px;
+      padding: 3px 8px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px;
+      display: inline-flex; gap: 5px; align-items: center; animation: fadein .35s ease;
+    }
+    .dchip .v { color: var(--muted); }
+    .dchip .old { color: var(--muted); text-decoration: line-through; opacity: .75; }
+    .dchip .new { color: var(--good); font-weight: 700; }
+    .dchip .ar { color: var(--accent); }
+    .dchip.push { border-color: var(--accent-2); }
+    .dchip.push .new { color: var(--accent-2); }
+    .dchip.pop { border-color: var(--bad); }
+    .dchip.pop .new { color: var(--bad); }
+    .dchip.reset .new { color: var(--warn); }
+    .d-empty { color: var(--muted); font-size: 12px; font-style: italic; }
+    @keyframes fadein { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; transition: none !important; }
+    }
+
+    /* ']' 三步流水线 */
+    .pipe { display: flex; align-items: center; gap: 5px; margin-bottom: 8px; flex-wrap: wrap; }
+    .pstep {
+      border: 1px solid #2d2d3d; background: #16161e; border-radius: 8px;
+      padding: 4px 9px; font-size: 12px; color: var(--muted);
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+    }
+    .pstep.on { border-color: var(--accent); background: #2f334d; color: #fff; }
+    .pstep.done { border-color: var(--good); color: var(--good); opacity: .8; }
+    .parrow { color: #3b4261; font-weight: 700; }
+
+    .legend { display: flex; gap: 12px; flex-wrap: wrap; }
+    .legend span { display: inline-flex; gap: 5px; align-items: center; font-size: 12px; color: var(--muted); }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .dot.now { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+    .dot.dg { background: var(--warn); }
+    .dot.br { background: var(--accent-2); }
+    .dot.act { background: none; border: 2px solid var(--accent); border-radius: 3px; width: 12px; height: 8px; }
+    .dot.fold { background: none; border: 2px solid var(--good); border-radius: 3px; width: 12px; height: 8px; }
+    .dot.fut { background: none; border: 2px solid #414868; border-radius: 3px; width: 12px; height: 8px; }
+
+    .log {
+      max-height: 200px; overflow: auto; background: #16161e; border-radius: 12px;
+      border: 1px solid #24283b; padding: 8px 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px; color: #a9b1d6;
+    }
+    .log div { padding: 3px 0; border-bottom: 1px solid #1a1b26; }
+    .log .k-init { color: var(--muted); }
+    .log .k-digit { color: var(--warn); }
+    .log .k-open { color: var(--accent-2); }
+    .log .k-letter { color: var(--text); }
+    .log .k-pop { color: var(--bad); }
+    .log .k-repeat { color: var(--accent); }
+    .log .k-merge { color: var(--good); }
+    .log .k-done { color: var(--good); font-weight: 700; }
+
+    .code-state {
+      background: #1a1b26; border: 1px solid #414868; border-radius: 10px;
+      padding: 8px 12px; margin: 10px 0 8px; font-size: 13px; color: var(--muted);
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+    }
+    .code-state b { color: var(--warn); }
+    .code-block {
+      background: #16161e; border: 1px solid #414868; border-radius: 12px;
+      padding: 12px 6px 12px 0; margin: 10px 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12.5px; line-height: 1.6; color: #a9b1d6; overflow-x: auto;
+    }
+    .code-block .cl { padding: 0 12px; white-space: pre; border-left: 3px solid transparent; transition: background .2s ease, opacity .2s ease; }
+    .code-block .cl.on { background: #2f334d; border-left-color: var(--accent); color: #fff; }
+    .code-block .cl.dim { opacity: .42; }
+    .code-block .keyword { color: var(--accent); }
+    .code-block .type { color: var(--accent-2); }
+    .code-block .method { color: var(--good); }
+    .code-block .num { color: var(--warn); }
+    .code-block .str { color: #73daca; }
+    .code-block .comment { color: var(--muted); font-style: italic; }
+
+    .explain { line-height: 1.7; font-size: 14px; }
+    .explain h3 { color: var(--accent); margin: 16px 0 8px; font-size: 15px; }
+    .explain ol, .explain ul { padding-left: 19px; margin: 6px 0; }
+    .explain li { margin: 4px 0; }
+    .explain code, .explain .k {
+      background: #16161e; border: 1px solid #414868; border-radius: 6px;
+      padding: 1px 5px; font-size: 12px; color: var(--warn);
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+    }
+    .explain p { margin: 6px 0; }
+    .bcard {
+      border: 1px solid #2d2d3d; border-left: 3px solid var(--accent-2); border-radius: 8px;
+      padding: 6px 9px; margin: 6px 0; font-size: 12px; line-height: 1.6;
+    }
+    .bcard .bh { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; color: #fff; }
+    .bcard .bh .no { color: var(--accent); font-weight: 700; }
+    .bcard .bh .ar { color: var(--accent); }
+    .bcard .bw { color: var(--text); margin-top: 3px; }
+    .bcard .bw b { color: var(--warn); }
+    .bcard .bn { color: var(--muted); margin-top: 2px; }
+    .bcard .bn b { color: var(--bad); }
+    .bcard code { font-size: 11.5px; }
+    .footer-note { color: var(--muted); font-size: 12px; margin-top: 10px; }
+    .kbd-hint { color: var(--muted); font-size: 12px; margin-top: 10px; text-align: center; }
+
+    @media (max-width: 900px) {
+      .container { grid-template-columns: 1fr; }
+      .stacks { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>394. 字符串解码：双栈保存现场</h1>
+    <p id="caseLine">示例：s = 3[a2[c]] &rarr; accaccacc &nbsp;|&nbsp; 用 &larr; &rarr; 逐帧推进，空格自动播放</p>
+  </header>
+
+  <div class="toolbar">
+    <div class="controls">
+      <button id="btnPrev">上一步</button>
+      <button id="btnNext">下一步</button>
+      <button id="btnPlay" class="secondary">自动播放</button>
+      <button id="btnReset" class="ghost">重置</button>
+    </div>
+    <div class="controls">
+      <button id="btnP0" class="preset active-mode">3[a]2[bc]</button>
+      <button id="btnP1" class="preset ghost">3[a2[c]]</button>
+      <button id="btnP2" class="preset ghost">2[abc]3[cd]ef</button>
+      <button id="btnP3" class="preset ghost">3[z]2[&hellip;]ef</button>
+      <input id="caseInput" placeholder="自定义，如 12[a]2[b9[c]d]" spellcheck="false" />
+      <button id="btnApply" class="ghost">应用</button>
+    </div>
+    <div class="controls push">
+      <span class="chip" id="stepInfo">Step 0</span>
+      <span class="chip" id="chInfo">i: -</span>
+      <span class="chip" id="numInfo">num: 0</span>
+      <span class="chip" id="lvInfo">层: 0</span>
+      <span class="chip" id="lenInfo">|cur|: 0</span>
+    </div>
+    <div class="legend" style="margin: 0;">
+      <span><i class="dot now"></i>当前字符</span>
+      <span><i class="dot dg"></i>数字（倍数）</span>
+      <span><i class="dot br"></i>括号（切层）</span>
+      <span><i class="dot act"></i>正在展开的层</span>
+      <span><i class="dot fold"></i>已折叠回 cur</span>
+      <span><i class="dot fut"></i>还没读到</span>
+    </div>
+  </div>
+
+  <div class="container">
+    <section class="panel col-main">
+      <div id="formulaBox" class="formula-display">
+        <div class="formula-title">等待开始…</div>
+        <div class="formula-content">点「下一步」，从 <b>i = 0</b> 开始逐字符扫描。</div>
+      </div>
+
+      <h3>① 输入串 s 与指针 i（左边框深浅 = 嵌套深度）</h3>
+      <div class="tape" id="tape"></div>
+
+      <h3>② 括号嵌套轨道（每道弧 = 一层 k[...]，弧上标倍数）</h3>
+      <div class="svg-wrap"><svg id="groupSvg" role="img" aria-label="字符串解码括号嵌套图"></svg></div>
+
+      <h3>③ cur：当前层正在拼的串</h3>
+      <div class="cur-row" id="curRow"></div>
+      <div id="answerBox" class="answer" style="display:none;"></div>
+    </section>
+
+    <section class="panel col-state">
+      <h3>④ 四路 if-else：这一步进了哪条</h3>
+      <div class="branch" id="branchBox"></div>
+      <div class="branch-note">从上到下短路判断：命中之前的判据<span style="color:var(--bad)">都被真测过一遍</span>（✗），命中之后剩下的<span style="color:var(--muted)">才不再判断</span>（— 短路）。']' 三条全不成立，所以走 ④ 兜底。</div>
+
+      <h3>⑤ 本步到底改了什么（旧值 &rarr; 新值）</h3>
+      <div class="delta" id="deltaBox"></div>
+
+      <h3>⑥ 两个栈（上 = 栈顶，push 压入即成为新的栈顶）</h3>
+      <div class="stacks">
+        <div class="stack-col">
+          <h4>numStack <span>存每层倍数</span></h4>
+          <div id="numStackBox"></div>
+        </div>
+        <div class="stack-col">
+          <h4>strStack <span>存外层前缀</span></h4>
+          <div id="strStackBox"></div>
+        </div>
+      </div>
+
+      <h3>⑦ else（']'）分支的三步与它的局部变量</h3>
+      <div class="pipe" id="pipeBox"></div>
+      <dl class="tmp">
+        <dt>int k</dt><dd id="tmpK" class="off">—</dd>
+        <dt>String temp</dt><dd id="tmpTemp" class="off">—</dd>
+        <dt>String pre</dt><dd id="tmpPre" class="off">—</dd>
+      </dl>
+
+      <h3>操作日志（对着右侧代码看）</h3>
+      <div class="log" id="log"></div>
+      <div class="footer-note" id="noteLine"></div>
+    </section>
+
+    <section class="panel explain col-code">
+      <h3>你的代码在干什么</h3>
+      <div class="code-state" id="codeState">等待开始…</div>
+      <div class="code-block" id="codeBlock">
+        <div class="cl"><span class="keyword">class</span> <span class="type">Solution</span> {</div>
+        <div class="cl">    <span class="keyword">public</span> <span class="type">String</span> <span class="method">decodeString</span>(<span class="type">String</span> s) {</div>
+        <div class="cl" data-l="A1">        <span class="type">Deque</span>&lt;<span class="type">Integer</span>&gt; numStack = <span class="keyword">new</span> <span class="type">ArrayDeque</span>&lt;&gt;();</div>
+        <div class="cl" data-l="A2">        <span class="type">Deque</span>&lt;<span class="type">String</span>&gt; strStack = <span class="keyword">new</span> <span class="type">ArrayDeque</span>&lt;&gt;();</div>
+        <div class="cl" data-l="A3">        <span class="type">String</span> cur = <span class="str">""</span>;</div>
+        <div class="cl" data-l="A4">        <span class="keyword">int</span> num = <span class="num">0</span>;</div>
+        <div class="cl" data-l="A5">        <span class="keyword">for</span>(<span class="keyword">int</span> i = <span class="num">0</span>; i &lt; s.<span class="method">length</span>(); i++){</div>
+        <div class="cl" data-l="A6">            <span class="keyword">char</span> ch = s.<span class="method">charAt</span>(i);</div>
+        <div class="cl" data-l="A7">            <span class="keyword">if</span>(ch &gt;= <span class="str">'0'</span> &amp;&amp; ch &lt;= <span class="str">'9'</span>){        <span class="comment">// ① 数字：累加倍数</span></div>
+        <div class="cl" data-l="A8">                num = num * <span class="num">10</span> + (ch - <span class="str">'0'</span>);</div>
+        <div class="cl" data-l="A9">            }<span class="keyword">else if</span>(ch == <span class="str">'['</span>){               <span class="comment">// ② 进内层：存现场</span></div>
+        <div class="cl" data-l="A10">                numStack.<span class="method">push</span>(num);</div>
+        <div class="cl" data-l="A11">                strStack.<span class="method">push</span>(cur);</div>
+        <div class="cl" data-l="A12">                num = <span class="num">0</span>;</div>
+        <div class="cl" data-l="A13">                cur = <span class="str">""</span>;</div>
+        <div class="cl" data-l="A14">            }<span class="keyword">else if</span>(ch &gt;= <span class="str">'a'</span> &amp;&amp; ch &lt;= <span class="str">'z'</span>){  <span class="comment">// ③ 小写字母：当前层拼</span></div>
+        <div class="cl" data-l="A15">                cur += ch;</div>
+        <div class="cl" data-l="A16">            }<span class="keyword">else</span>{                             <span class="comment">// ④ 兜底 = ']'：取现场</span></div>
+        <div class="cl" data-l="A17">                <span class="keyword">int</span> k = numStack.<span class="method">pop</span>();</div>
+        <div class="cl" data-l="A18">                <span class="type">String</span> temp = <span class="str">""</span>;</div>
+        <div class="cl" data-l="A19">                <span class="keyword">for</span>(<span class="keyword">int</span> j = <span class="num">0</span>; j &lt; k; j++){</div>
+        <div class="cl" data-l="A20">                    temp += cur;</div>
+        <div class="cl">                }</div>
+        <div class="cl" data-l="A22">                <span class="type">String</span> pre = strStack.<span class="method">pop</span>();   <span class="comment">// 弹在 temp 之后，两个栈互不干扰</span></div>
+        <div class="cl" data-l="A23">                cur = pre + temp;               <span class="comment">// 前缀接回，同层继续拼</span></div>
+        <div class="cl">            }</div>
+        <div class="cl">        }</div>
+        <div class="cl" data-l="A26">        <span class="keyword">return</span> cur;</div>
+        <div class="cl">    }</div>
+        <div class="cl">}</div>
+      </div>
+
+      <h3>双栈版在做什么：手工递归</h3>
+      <ol>
+        <li><b>cur</b> = 我现在这一层正在拼的串；<b>num</b> = 我正在读的那个倍数。</li>
+        <li><b>遇到 '[' 就压两下</b>：把「本层倍数」交给 numStack，把「本层已拼好的部分」交给 strStack，然后 num、cur 归零，开始拼里层。这正是递归调用前保存局部变量。</li>
+        <li><b>遇到 ']' 走 else，分三步结算</b>：先弹 numStack 拿倍数 k → 用里层的 cur 抄 k 份造出 temp → 再弹 strStack 拿前缀 pre → <span class="k">cur = pre + temp</span>。等价于把递归返回值交回调用方。</li>
+        <li>两栈<span class="k">必须成对</span>压弹，深度才不错位；栈深 = 括号嵌套深度。</li>
+        <li>判据顺序是 <b>数字 → '[' → 小写字母 → else</b>：']' 是唯一三条都不成立、落到兜底的字符，所以 else 里不用再写 <code>ch == ']'</code>。</li>
+      </ol>
+
+      <h3>四路分支对照表</h3>
+      <div class="bcard">
+        <div class="bh"><span class="no">①</span> ch&gt;='0' &amp;&amp; ch&lt;='9' <span class="ar">→</span> num = num*10 + (ch-'0')</div>
+        <div class="bw"><b>为什么</b>：ASCII 数字是连续编码，比区间就够判，还比 <code>Character.isDigit</code> 更严（后者连全角 '２' 都算数字）。倍数可能连着好几位，要边读边左移；拼好先攥在 num 里，等 <code>'['</code> 来认领它是哪层的倍数。</div>
+        <div class="bn"><b>写错</b>：<code>num = ch-'0'</code> → <code>12[a]</code> 解成 <code>aa</code>（只剩最后一位）。</div>
+      </div>
+      <div class="bcard">
+        <div class="bh"><span class="no">②</span> ch == '[' <span class="ar">→</span> 两个 push，再 num=0、cur=""</div>
+        <div class="bw"><b>为什么</b>：要跳进内层，本层的「倍数 + 已拼到一半的前缀」必须整套存下来 —— 这就是递归调用前的现场保存。</div>
+        <div class="bn"><b>写错</b>：漏 <code>cur=""</code> → 里层把外层已拼的 "a" 当自己的起点，<code>3[a2[c]]</code> 解成 <code>aacacaacacaacac</code>。</div>
+      </div>
+      <div class="bcard">
+        <div class="bh"><span class="no">③</span> ch&gt;='a' &amp;&amp; ch&lt;='z' <span class="ar">→</span> cur += ch</div>
+        <div class="bw"><b>为什么</b>：字母既不切层也不带倍数，纯粹属于当前层的内容，接到 cur 尾巴上就行；外层前缀此刻锁在 strStack 里，不会互相污染。题目保证只有小写，所以区间判断安全。</div>
+        <div class="bn"><b>写错</b>：把这条判据漏掉 → 字母落到 else 被当 ']' 弹栈，<code>3[a]</code> 第一个字符 'a' 就 pop 空栈，抛 <code>NoSuchElementException</code>。</div>
+      </div>
+      <div class="bcard">
+        <div class="bh"><span class="no">④</span> else（兜底 = ']'）<span class="ar">→</span> 弹 numStack 得 k → temp 抄 k 份 → 弹 strStack 得 pre → cur = pre + temp</div>
+        <div class="bw"><b>为什么</b>：']' 是唯一走到兜底的字符，用 else 省掉一次比较。栈顶恰好是最近一次 '[' 存的那层现场（LIFO 对齐当前括号）；<code>temp</code> 保证是"抄 k 份"，而不是"自己翻倍自己"。两个栈各弹各的，<b>k 先弹、pre 后弹</b>不影响配对。</div>
+        <div class="bn"><b>写错</b>：漏 <code>pre +</code> → <code>2[abc]3[cd]ef</code> 丢掉 <code>abcabc</code>，只剩 <code>cdcdcd</code> 拼 <code>ef</code>；写 <code>cur += cur</code> → 长度指数爆炸。</div>
+      </div>
+
+      <h3>五个易错点</h3>
+      <ul>
+        <li><span class="k">cur = temp</span>（漏了 pre）→ <code>2[abc]3[cd]ef</code> 会丢掉 <code>abcabc</code> 这段同层前缀。</li>
+        <li>忘写 <span class="k">num = 0</span> → <code>3[a2[b]]</code> 的外层 3 会一直留着，里层被读成 <code>32[b]</code>。</li>
+        <li>多位数只能用 <span class="k">num*10 + (ch-'0')</span>，直接把字符接成字符串会漏掉 12、100 这类倍数。</li>
+        <li><b>用 else 兜底 ']' 有代价</b：任何非法字符（大写、空格、少一个括号）都会被当成 ']' 去弹栈，栈空时抛 <code>NoSuchElementException</code>。反过来把 else 当字母，则是把垃圾静默拼进结果。两种写法都建立在"输入合法"这个前提上 —— 面试时值得主动说一句。</li>
+        <li><code>String</code> 不可变，<span class="k">+=</span> 每次都新建对象：解码后长度 L 时最坏 <code>O(L²)</code>。想省就用 <code>StringBuilder</code>，思路与栈结构完全不变。</li>
+      </ul>
+
+      <h3>看动画时盯什么</h3>
+      <ul>
+        <li><b>④</b> 每步只有一条亮：紫底 ✓ 是这轮真正执行的分支；它<span style="color:var(--bad)">上面</span>那几条标 ✗ 不成立（判据真的被跑过），<span style="color:var(--muted)">下面</span>那几条标 — 短路（连判断都不发生）。']' 因为前三条全不成立，所以只有 ④ 亮。</li>
+        <li><b>⑤</b> 用「旧值 → 新值」列出这一帧到底动了谁：<span style="color:var(--accent-2)">⇑ push</span> / <span style="color:var(--bad)">⇓ pop</span> / <code>cur += 'a'</code> / <code>cur = pre + temp</code>，没动的变量不出现。</li>
+        <li><b>⑦</b> 的三步流水线按你这版代码的顺序走：<b>先弹 numStack 得 k</b> → 造 temp → <b>最后才弹 strStack 得 pre</b>。所以 ⑤ 里 strStack 的 ⇓ pop 是和 <code>cur = pre + temp</code> 同一步出现的。</li>
+        <li><b>②</b> 的弧从灰 &rarr; 紫（正在展开）&rarr; 绿（已折回 cur），和 <b>⑥</b> 两个栈的压入弹出同步发生。</li>
+        <li><b>③</b> 里 <span style="color:var(--accent-2)">蓝色格子</span>是弹回来的 pre、<span style="color:var(--good)">绿色格子</span>是新拼上的 temp，能直接看出为什么是 <code>pre + temp</code>。</li>
+        <li>栈里永远存着「上一层欠着的现场」，所以最外层那一条弧（root）要到最后一步才变绿。</li>
+      </ul>
+
+      <h3>复杂度</h3>
+      <ul>
+        <li>时间：读串 O(n)，拼接产出 L 个字符；本实现用 <code>+=</code>，最坏 O(L²)。</li>
+        <li>空间：栈深 = 最大嵌套深度 d，加 cur/temp 的输出缓冲 → O(n + L)。</li>
+      </ul>
+
+      <div class="footer-note">同一套逻辑换 DFS 写法：递归函数返回当前层的串，遇到 '[' 就递归进去 —— 双栈只是把系统调用栈换成自己维护的两个 Deque。</div>
+    </section>
+  </div>
+
+  <div class="kbd-hint">&larr; 上一步 &nbsp; &rarr; 下一步 &nbsp; 空格 播放 / 暂停</div>
+
+  <script>
+    const PRESETS = ['3[a]2[bc]', '3[a2[c]]', '2[abc]3[cd]ef', '3[z]2[2[y]pq4[2[jk]e1[f]]]ef'];
+    const MAX_LEN = 60;
+    let s = PRESETS[0];
+    let steps = [], groups = [], depths = [], maxDepth = 0;
+    let stepIndex = 0, playing = false, timer = null;
+
+    const q = id => document.getElementById(id);
+    const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const cap = (t, n) => t.length > n ? t.slice(0, n) + '…（共 ' + t.length + ' 字符）' : t;
+    const show = t => t === '' ? '∅' : esc(cap(t, 80));
+
+    // 每个位置的嵌套深度： '[' 处为外层，']' 处为里层
+    function computeDepths(str) {
+      const d = []; let lv = 0;
+      for (let i = 0; i < str.length; i++) {
+        d[i] = lv;
+        if (str[i] === '[') lv++;
+        else if (str[i] === ']') lv--;
+      }
+      return d;
+    }
+
+    // 每对 [] = 一层，记录它的起止、深度和前面的倍数
+    function computeGroups(str) {
+      const gs = [], open = [];
+      for (let i = 0; i < str.length; i++) {
+        if (str[i] === '[') open.push(i);
+        else if (str[i] === ']') {
+          const j = open.pop();
+          let t = '', p = j - 1;
+          while (p >= 0 && /\d/.test(str[p])) p--;
+          t = str.slice(p + 1, j);
+          gs.push({ open: j, close: i, depth: open.length, count: t });
+        }
+      }
+      return gs;
+    }
+
+    // 按你那段 Java 逐行执行：每步存快照 + 本步改了哪些变量(delta) + 为什么要这么改(why)
+    function buildSteps(str) {
+      steps = [];
+      depths = computeDepths(str);
+      groups = computeGroups(str);
+      maxDepth = groups.reduce((m, g) => Math.max(m, g.depth), 0);
+      const numStack = [], strStack = [];   // index 0 = 栈顶，对应 ArrayDeque.push
+      let num = 0, cur = '', st = 0;
+      const snap = () => ({ numStack: [...numStack], strStack: [...strStack], num, cur });
+      const push = (o) => { steps.push(Object.assign({ st: st++, level: 0 }, snap(), o)); };
+      const mv = (v, from, to) => ({ v, mode: 'set', from, to });
+
+      push({ kind: 'init', i: -1, ch: '', level: 0,
+        delta: [{ v: 'numStack / strStack / cur / num', mode: 'init', to: '[] / [] / "" / 0' }],
+        why: '四个角色分工：<b>cur</b> = 当前这一层正在拼的串；<b>num</b> = 正在读的倍数；' +
+          '<b>两个栈</b> = 已经让位给内层、还没结算的外层现场。',
+        msg: '初始化：numStack=[] strStack=[] num=0 cur=""' });
+
+      for (let i = 0; i < str.length; i++) {
+        const ch = str[i], lv = depths[i];
+        if (/\d/.test(ch)) {
+          const before = num;
+          num = num * 10 + (+ch);
+          push({ kind: 'digit', i, ch, level: lv, before, digit: +ch,
+            delta: [mv('num', before, num)],
+            why: `第一条判据 <b>ch&gt;='0' &amp;&amp; ch&lt;='9'</b> 命中：ASCII 数字是连续编码，比区间就够，` +
+              `还比 <code>Character.isDigit</code> 更严（后者连全角 '２' 都算数字）。` +
+              `倍数可能是多位数（<span class="em">12[a]</span> 里的 1 和 2 是同一个数），所以每读一个数字，` +
+              `把已经记下的<span class="em">左移一位再相加</span>：${before} ×10 + ${ch} = ${num}。` +
+              `数字<span class="em">不进栈</span>：此刻还不知道它配哪一层，要等下一个 '[' 出现才确认它是倍数。`,
+            msg: `s[${i}]='${ch}' 数字 → num = ${before}×10 + ${ch} = ${num}` });
+        } else if (ch === '[') {
+          numStack.unshift(num); strStack.unshift(cur);
+          const pn = num, ps = cur;
+          num = 0; cur = '';
+          push({ kind: 'open', i, ch, level: lv + 1, pushedNum: pn, pushedStr: ps,
+            delta: [{ v: 'numStack', mode: 'push', val: pn }, { v: 'strStack', mode: 'push', val: ps }]
+              .concat(pn !== 0 ? [{ v: 'num', mode: 'reset', from: pn, to: 0 }] : [])
+              .concat(ps !== '' ? [{ v: 'cur', mode: 'reset', from: ps, to: '' }] : []),
+            why: `'[' = 下一层开始。当前层有两样东西必须原样带走：<span class="em">它的倍数 num</span> 和 ` +
+              `<span class="em">已经拼到一半的 cur</span>，所以压两个栈。压完立刻双双归零，让里层从空白开始拼。` +
+              `少压任何一个，']' 回来时都接不回原来的样子。`,
+            msg: `s[${i}]='[' 存现场 → numStack.push(${pn})，strStack.push("${ps}")，num/cur 归零，进第 ${lv + 1} 层` });
+        } else if (ch === ']') {
+          const times = numStack.shift();
+          push({ kind: 'pop', i, ch, level: lv, times, pre: null, temp: '',
+            delta: [{ v: 'numStack', mode: 'pop', val: times }, { v: 'int k', mode: 'new', to: times }],
+            why: `走到 <b>else</b> 说明前三条判据全不成立 —— 输入保证只剩 ']'。<span class="em">先只弹 numStack</span> 拿倍数 k=${times}；` +
+              `pre 还在 strStack 里没动，它要等 temp 造完才用得上。`,
+            msg: `s[${i}]=']' 兜底分支 → k = numStack.pop() = ${times}` });
+          const temp = cur.repeat(times);
+          push({ kind: 'repeat', i, ch, level: lv, times, pre: null, temp,
+            delta: [{ v: 'temp', mode: 'new', to: temp }],
+            why: `为什么要一个 <b>temp</b> 中转：直接写 <span class="em">cur += cur</span> 的话，每加一次源串自己也跟着变长，` +
+              `第二轮就把刚拼进去的内容又当原料，长度翻倍式失控。另起一个空串一份份抄 cur，才恰好是 cur × k：` +
+              `${cur.length} 字符 × ${times} = <span class="em">${temp.length} 字符</span>。`,
+            msg: `temp = cur × k = "${cap(cur, 20)}" × ${times} = "${cap(temp, 24)}"` });
+          const pre = strStack.shift();
+          cur = pre + temp;
+          push({ kind: 'merge', i, ch, level: lv - 1, times, pre, temp,
+            delta: [{ v: 'strStack', mode: 'pop', val: pre }, { v: 'cur', mode: 'merge', pre, temp, to: cur }],
+            why: `temp 造完才弹 strStack 拿 pre。<span class="em">两个栈各弹各的，谁先谁后不影响配对</span>（栈顶永远是最近那层现场）；` +
+              `唯一不能挪的是：'cur = pre + temp' 之前 cur 必须还是里层刚拼好的值。` +
+              `而 <b>pre + temp</b> 不能写成 <span class="em">cur = temp</span>：pre 是本层进 '[' 之前已经拼好的部分 —— ` +
+              `像 <span class="em">2[abc]3[cd]ef</span> 这种同层并列，前一段 abcabc 就存在 pre 里，丢了它就只剩最后一次重复。`,
+            msg: `pre = strStack.pop() = "${pre}"；cur = pre + temp = "${cap(cur, 24)}"（回到第 ${lv - 1} 层）` });
+        } else {
+          cur += ch;
+          push({ kind: 'letter', i, ch, level: lv,
+            delta: [{ v: 'cur', mode: 'append', tail: ch }],
+            why: `第三条判据 <b>ch>='a' &amp;&amp; ch<='z'</b> 成立：字母既不切层也不带倍数，纯粹属于<span class="em">当前这一层</span>的内容，` +
+              `直接接到 cur 尾巴上。外层那份前缀此刻锁在 strStack 里，不会互相污染。` +
+              `<span class="em">这条判断排在 else 之前</span>，所以 ']' 会把三条都试一遍才落到兜底。`,
+            msg: `s[${i}]='${ch}' 字母 → cur += '${ch}'，cur = "${cap(cur, 28)}"` });
+        }
+      }
+
+      push({ kind: 'done', i: str.length, ch: '', level: 0,
+        delta: [{ v: 'return cur', mode: 'new', to: cur }],
+        why: `每个 '[' 存一次现场、每个 ']' 还一次现场；i 走到末尾时两栈必空，说明全部结清，剩下的 cur 就是答案。` +
+          `<span class="em">栈不空 = 括号没配对</span>，这题输入保证合法，所以不用防这一手。`,
+        msg: `i 走到末尾，两栈已空 → return cur = "${cap(cur, 40)}"` });
+    }
+
+    // ── ① 输入带 ─────────────────────────────────────────────
+    function renderTape(e) {
+      const box = q('tape');
+      box.className = 'tape' + (s.length > 20 ? ' dense' : '');
+      box.innerHTML = '';
+      for (let i = 0; i < s.length; i++) {
+        const ch = s[i];
+        const d = document.createElement('div');
+        const type = /\d/.test(ch) ? 'dg' : (ch === '[' || ch === ']' ? 'br' : 'al');
+        const lv = Math.min(depths[i], 4);
+        d.className = 'tcell ' + type + (lv ? ' lv' + lv : '') +
+          (i === e.i ? ' now' : (i < e.i ? ' passed' : ''));
+        d.innerHTML = `<div class="c">${esc(ch)}</div><div class="x">${i}</div>`;
+        d.title = `i=${i} ch='${ch}' 嵌套深度 ${depths[i]}`;
+        box.appendChild(d);
+      }
+    }
+
+    // ── ② 嵌套轨道 ───────────────────────────────────────────
+    function renderGroups(e) {
+      const wrap = document.querySelector('.svg-wrap');
+      const svg = q('groupSvg');
+      const NS = 'http://www.w3.org/2000/svg';
+      const n = s.length;
+      const padX = 10, rowH = 22, topY = 14;
+      const avail = Math.max(260, (wrap.clientWidth || 480) - 14);
+      const cw = Math.max(11, Math.min(24, Math.floor(avail / Math.max(n, 1))));
+      const W = padX * 2 + n * cw;
+      const H = topY * 2 + maxDepth * rowH + 26;
+      svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+      svg.setAttribute('height', H);
+      svg.innerHTML = '';
+
+      const x = i => padX + i * cw + cw / 2;
+      const yOf = d => topY + d * rowH;
+
+      // 最外层（cur 本身）：整条底线
+      const root = document.createElementNS(NS, 'path');
+      const rootDone = e.kind === 'done';
+      root.setAttribute('d', `M ${x(0)} ${H - 16} L ${x(0)} ${H - 22} L ${x(n - 1)} ${H - 22} L ${x(n - 1)} ${H - 16}`);
+      root.setAttribute('class', 'arc' + (rootDone ? ' folded' : ''));
+      svg.appendChild(root);
+      const rl = document.createElementNS(NS, 'text');
+      rl.setAttribute('x', x(0)); rl.setAttribute('y', H - 6); rl.setAttribute('class', 'plabel');
+      rl.textContent = '第 0 层（最外层的 cur）';
+      svg.appendChild(rl);
+
+      groups.forEach(g => {
+        const cls = g.close < e.i ? 'folded' : (g.open <= e.i && e.i <= g.close ? 'active' : 'future');
+        const y = yOf(g.depth);
+        const p = document.createElementNS(NS, 'path');
+        p.setAttribute('d', `M ${x(g.open)} ${y + 9} L ${x(g.open)} ${y} L ${x(g.close)} ${y} L ${x(g.close)} ${y + 9}`);
+        p.setAttribute('class', 'arc ' + cls);
+        svg.appendChild(p);
+        const t = document.createElementNS(NS, 'text');
+        t.setAttribute('x', x(g.open) - 3); t.setAttribute('y', y - 3);
+        t.setAttribute('text-anchor', 'end'); t.setAttribute('class', 'cnt ' + cls);
+        t.textContent = g.count + '×';
+        svg.appendChild(t);
+      });
+
+      if (e.i >= 0 && e.i < n) {
+        const l = document.createElementNS(NS, 'line');
+        l.setAttribute('x1', x(e.i)); l.setAttribute('x2', x(e.i));
+        l.setAttribute('y1', 4); l.setAttribute('y2', H - 4);
+        l.setAttribute('class', 'ptr');
+        svg.appendChild(l);
+      }
+    }
+
+    // ── ③ cur 缓冲 ──────────────────────────────────────────
+    function cell(ch, cls) {
+      const d = document.createElement('div');
+      d.className = 'cch' + (cls ? ' ' + cls : '');
+      d.textContent = ch;
+      return d;
+    }
+    function renderCur(e) {
+      const box = q('curRow');
+      box.innerHTML = '';
+      const cut = s.length > 0 && e.cur.length > 72;
+      if (!e.cur) {
+        const sp = document.createElement('span');
+        sp.className = 'cur-empty';
+        sp.textContent = e.kind === 'open' ? 'cur = "" （旧值已存进 strStack）' : 'cur = ""（空）';
+        box.appendChild(sp);
+      } else if (e.kind === 'merge') {
+        const tag1 = document.createElement('span'); tag1.className = 'cur-tag pre'; tag1.textContent = 'pre =';
+        box.appendChild(tag1);
+        [...e.pre].slice(0, 34).forEach(c => box.appendChild(cell(c, 'pre')));
+        const tag2 = document.createElement('span'); tag2.className = 'cur-tag temp'; tag2.textContent = 'temp =';
+        box.appendChild(tag2);
+        [...e.temp].slice(0, 38).forEach(c => box.appendChild(cell(c, 'new')));
+        if (e.pre.length > 34 || e.temp.length > 38) box.appendChild(cell('…', ''));
+      } else {
+        const arr = [...e.cur];
+        arr.slice(0, cut ? 60 : arr.length).forEach((c, j) =>
+          box.appendChild(cell(c, e.kind === 'letter' && e.i >= 0 && j === arr.length - 1 ? 'new' : 'keep')));
+        if (cut) box.appendChild(cell('…', ''));
+      }
+      const len = document.createElement('span');
+      len.className = 'cur-tag';
+      len.textContent = `|cur| = ${e.cur.length}`;
+      box.appendChild(len);
+
+      const ans = q('answerBox');
+      if (e.kind === 'done') {
+        ans.style.display = 'block';
+        ans.textContent = `返回：${cap(e.cur, 160)}`;
+      } else ans.style.display = 'none';
+    }
+
+    // ── ④ 双栈 ──────────────────────────────────────────────
+    function renderStacks(e) {
+      const one = (arr, box, fmt, fresh) => {
+        box.innerHTML = '';
+        if (!arr.length) {
+          const sp = document.createElement('div');
+          sp.className = 'sempty'; sp.textContent = '∅ 空栈';
+          box.appendChild(sp);
+          return;
+        }
+        arr.forEach((v, j) => {
+          const d = document.createElement('div');
+          d.className = 'sitem' + (j === 0 ? ' top' : '') + (fresh && j === 0 ? ' fresh' : '');
+          d.textContent = j === 0 ? fmt(v) + '  ← 栈顶' : fmt(v);
+          box.appendChild(d);
+        });
+        const b = document.createElement('div');
+        b.className = 'sbottom'; b.textContent = '栈底';
+        box.appendChild(b);
+      };
+      one(e.numStack, q('numStackBox'), v => v, e.kind === 'open');
+      one(e.strStack, q('strStackBox'), v => v === '' ? '""' : cap(v, 18), e.kind === 'open');
+    }
+
+    // ── ⑤ ']' 局部变量 ──────────────────────────────────────
+    function renderTmp(e) {
+      const on = e.kind === 'pop' || e.kind === 'repeat' || e.kind === 'merge';
+      const set = (el, txt, lit) => {
+        el.textContent = txt;
+        el.className = on ? (lit ? 'on' : '') : 'off';
+      };
+      set(q('tmpK'), on ? String(e.times) : '—', e.kind === 'pop');
+      set(q('tmpTemp'), on ? (e.temp ? `"${cap(e.temp, 40)}"` : '""') : '—', e.kind === 'repeat' || e.kind === 'merge');
+      set(q('tmpPre'), e.kind === 'merge' ? `"${cap(e.pre, 40)}"` : (on ? '还没弹（仍在 strStack 里）' : '—'), e.kind === 'merge');
+    }
+
+    // ── 公式框 ──────────────────────────────────────────────
+    const TITLES = {
+      init: '准备：两个栈 + 两个变量',
+      digit: "① ch>='0' &amp;&amp; ch<='9'：累加成多位数倍数",
+      open: "② ch == '['：保存现场，切进内层",
+      letter: "③ ch>='a' &amp;&amp; ch<='z'：拼进当前层 cur",
+      pop: "④ else（=']'）第一步：弹 numStack 拿 k",
+      repeat: "④ else（=']'）第二步：造 temp = cur × k",
+      merge: "④ else（=']'）第三步：弹 strStack 拿 pre，cur = pre + temp",
+      done: '扫描结束'
+    };
+    function renderFormula(e) {
+      const box = q('formulaBox');
+      let t = TITLES[e.kind], body = '';
+      if (e.kind === 'init') {
+        body = `<b>numStack</b> 存每层的倍数，<b>strStack</b> 存每层的外层前缀<br>` +
+          `<span class="math">num</span> 正在拼的倍数，<span class="math">cur</span> 正在拼的串。共 ${steps.length} 步。`;
+      } else if (e.kind === 'digit') {
+        body = `num = <b>${e.before}</b> × 10 + ('${e.ch}' − '0') = <span class="math">${e.num}</span><br>` +
+          (e.before ? `<span class="highlight">多位数就是这样拼出来的</span>：'${e.ch}' 不是新数字，是 ${e.before} 的后一位`
+            : '数字连读时继续 ×10，等遇到 <b>[</b> 才算完');
+      } else if (e.kind === 'open') {
+        body = `numStack.push(<span class="math">${e.pushedNum}</span>) &nbsp; strStack.push(<span class="math">"${show(e.pushedStr)}"</span>)<br>` +
+          `num = 0，cur = "" &nbsp;→&nbsp; <span class="highlight">开始拼第 ${e.level} 层</span>（旧前缀在栈里等它回来）`;
+      } else if (e.kind === 'letter') {
+        body = `cur = "${show(e.cur.slice(0, Math.max(0, e.cur.length - 1)))}" + <span class="highlight">'${e.ch}'</span> = "${show(e.cur)}"`;
+      } else if (e.kind === 'pop') {
+        body = `k = numStack.pop() = <b>${e.times}</b> &nbsp; <span class="math">strStack 先不动，pre 还在栈里</span><br>` +
+          `里层已经拼好的 <span class="math">cur = "${show(e.cur)}"</span> 原样留着，下一步当原料`;
+      } else if (e.kind === 'repeat') {
+        body = `for(j = 0; j &lt; <b>${e.times}</b>; j++) temp += cur<br>` +
+          `<span class="highlight">temp = "${show(e.temp)}"</span>（${e.cur.length} × ${e.times} = ${e.temp.length} 字符）`;
+      } else if (e.kind === 'merge') {
+        body = `pre = strStack.pop() = <b>"${show(e.pre)}"</b><br>` +
+          `cur = <span style="color:var(--accent-2)">pre</span> + <span class="highlight">temp</span> = "${show(e.pre)}" + "${cap(e.temp, 20)}"` +
+          ` = "${show(e.cur)}" &nbsp;→&nbsp; 回到第 ${e.level} 层，<span class="math">这层要是还有字符就接着拼</span>`;
+      } else {
+        body = `i == s.length()，两栈均已弹空（<span class="highlight">栈不空说明括号没配对</span>）<br>` +
+          `return cur = <span class="highlight">"${show(e.cur)}"</span>`;
+      }
+      box.innerHTML = `<div class="formula-title">${t} · Step ${e.st + 1}/${steps.length}</div>` +
+        `<div class="formula-content">${body}</div>` +
+        (e.why ? `<div class="why"><b>为什么</b>：${e.why}</div>` : '');
+    }
+
+    // ── ④ 四路分支判定 ──────────────────────────────────────
+    const BRANCHES = [
+      { test: `ch>='0' && ch<='9'`, act: 'num = num*10 + (ch - \'0\')' },
+      { test: `ch == '['`, act: 'numStack.push / strStack.push / 双双归零' },
+      { test: `ch>='a' && ch<='z'`, act: 'cur += ch' },
+      { test: `else（兜底 = ']'）`, act: '弹 numStack → 造 temp → 弹 strStack → cur = pre + temp' }
+    ];
+    const BR_LANE = { digit: 0, open: 1, letter: 2, pop: 3, repeat: 3, merge: 3 };
+    function renderBranch(e) {
+      const box = q('branchBox');
+      box.innerHTML = '';
+      const isChar = e.i >= 0 && e.i < s.length;
+      const hit = BR_LANE[e.kind];
+      const concrete = {
+        digit: () => `num = ${e.before} ×10 + ${e.digit} = <b>${e.num}</b>`,
+        open: () => `push(<b>${e.pushedNum}</b>) / push(<b>"${cap(e.pushedStr, 14)}"</b>) / num=0, cur=""`,
+        letter: () => `cur = "${cap(e.cur, 14)}" （末尾 <b>+'${e.ch}'</b>）`,
+        pop: () => `k = numStack.pop() = <b>${e.times}</b>`,
+        repeat: () => `temp = "${cap(e.cur, 10)}" × <b>${e.times}</b> = "${cap(e.temp, 14)}"`,
+        merge: () => `pre = "${cap(e.pre, 10)}"，cur = <b>"${cap(e.cur, 14)}"</b>`,
+        done: () => '', init: () => ''
+      };
+      BRANCHES.forEach((b, j) => {
+        const d = document.createElement('div');
+        let cls = 'lane';
+        if (!isChar) cls += ' na';
+        else if (j === hit) cls += ' hit';
+        else if (j < hit) cls += ' miss';
+        else cls += ' skip';
+        d.className = cls;
+        const act = (j === hit && concrete[e.kind]) ? concrete[e.kind]() : b.act;
+        d.innerHTML = `<div class="t"><span class="no">${'①②③④'[j]}</span>${esc(b.test)}</div>` +
+          `<div class="a">${act}</div>`;
+        box.appendChild(d);
+      });
+    }
+
+    // ── ⑤ 本步变量变化 ──────────────────────────────────────
+    function renderDelta(e) {
+      const box = q('deltaBox');
+      box.innerHTML = '';
+      const val = t => typeof t === 'string' ? '"' + cap(t, 14) + '"' : String(t);
+      const list = e.delta || [];
+      if (!list.length) {
+        box.innerHTML = '<span class="d-empty">本步没有变量变化</span>';
+        return;
+      }
+      list.forEach(d => {
+        const s2 = document.createElement('span');
+        s2.className = 'dchip ' + (d.mode === 'push' ? 'push' : d.mode === 'pop' ? 'pop' : d.mode === 'reset' ? 'reset' : '');
+        let html = `<span class="v">${esc(d.v)}</span>`;
+        if (d.mode === 'set') html += `<span class="old">${val(d.from)}</span><span class="ar">→</span><span class="new">${val(d.to)}</span>`;
+        else if (d.mode === 'new') html += `<span class="ar">=</span><span class="new">${val(d.to)}</span>`;
+        else if (d.mode === 'init') html += `<span class="ar">=</span><span class="new">${esc(d.to)}</span>`;
+        else if (d.mode === 'reset') html += `<span class="old">${val(d.from)}</span><span class="ar">→</span><span class="new">${val(d.to)}</span>`;
+        else if (d.mode === 'append') html += `<span class="ar">+=</span><span class="new">"${esc(d.tail)}"</span>`;
+        else if (d.mode === 'push') html += `<span class="ar">⇑</span><span class="new">push(${val(d.val)})</span>`;
+        else if (d.mode === 'pop') html += `<span class="ar">⇓</span><span class="new">pop() → ${val(d.val)}</span>`;
+        else if (d.mode === 'merge') html += `<span class="ar">=</span><span class="new" style="color:var(--accent-2)">pre</span>` +
+          `<span class="ar">+</span><span class="new">temp</span><span class="v">(${d.temp.length} 字符)</span>`;
+        s2.innerHTML = html;
+        s2.title = d.mode === 'merge' ? `pre="${cap(d.pre, 40)}" + temp="${cap(d.temp, 40)}"` : '';
+        box.appendChild(s2);
+      });
+    }
+
+    // ── ⑦ ']' 三步流水线 ────────────────────────────────────
+    function renderPipe(e) {
+      const box = q('pipeBox');
+      const stage = e.kind === 'pop' ? 0 : e.kind === 'repeat' ? 1 : e.kind === 'merge' ? 2 : -1;
+      const names = ['① 弹 numStack 得 k', '② temp = cur × k', '③ 弹 strStack 得 pre，cur = pre + temp'];
+      box.innerHTML = names.map((n, j) => {
+        const cls = j === stage ? 'pstep on' : (stage > j ? 'pstep done' : 'pstep');
+        return `<div class="${cls}">${n}</div>`;
+      }).join('<span class="parrow">→</span>');
+    }
+
+    // ── 代码高亮 ────────────────────────────────────────────
+    const CODE_ON = {
+      init: ['A1', 'A2', 'A3', 'A4'],
+      digit: ['A7', 'A8'],
+      open: ['A9', 'A10', 'A11', 'A12', 'A13'],
+      letter: ['A14', 'A15'],
+      pop: ['A16', 'A17'],
+      repeat: ['A18', 'A19', 'A20'],
+      merge: ['A22', 'A23'],
+      done: ['A26']
+    };
+    function renderCode(e) {
+      const act = CODE_ON[e.kind] || [];
+      document.querySelectorAll('#codeBlock .cl[data-l]').forEach(d => {
+        const on = act.includes(d.dataset.l);
+        d.classList.toggle('on', on);
+        d.classList.toggle('dim', !on);
+      });
+      q('codeState').innerHTML = e.i < 0
+        ? `准备阶段 · <b>cur=""</b> num=<b>0</b> 两栈空`
+        : e.i >= s.length
+          ? `循环退出 · <b>return cur</b>（长度 ${e.cur.length}）`
+          : `i = <b>${e.i}</b> · ch = <b>'${esc(e.ch)}'</b> · 第 <b>${e.level}</b> 层 · cur 长度 <b>${e.cur.length}</b>`;
+    }
+
+    function renderChips(e) {
+      q('stepInfo').innerHTML = `Step <b>${e.st + 1} / ${steps.length}</b>`;
+      q('chInfo').innerHTML = e.i >= 0 && e.i < s.length ? `i: <b>${e.i}</b> '${esc(e.ch)}'` : `i: <b>${e.i}</b>`;
+      q('numInfo').innerHTML = `num: <b>${e.num}</b>`;
+      q('lvInfo').innerHTML = `层: <b>${e.level}</b>`;
+      q('lenInfo').innerHTML = `|cur|: <b>${e.cur.length}</b>`;
+    }
+
+    function renderStep(idx) {
+      const e = steps[idx];
+      if (!e) return;
+      renderChips(e);
+      renderFormula(e);
+      renderBranch(e);
+      renderDelta(e);
+      renderTape(e);
+      renderGroups(e);
+      renderCur(e);
+      renderStacks(e);
+      renderTmp(e);
+      renderPipe(e);
+      renderCode(e);
+    }
+
+    function renderLog(e) {
+      const div = document.createElement('div');
+      div.className = 'k-' + e.kind;
+      div.textContent = `${String(e.st + 1).padStart(2, ' ')} [${e.kind}] ${e.msg}`;
+      q('log').appendChild(div);
+      q('log').scrollTop = q('log').scrollHeight;
+    }
+    function rebuildLog(upto) {
+      q('log').innerHTML = '';
+      for (let i = 0; i < upto; i++) renderLog(steps[i]);
+    }
+
+    function resetAll() {
+      stepIndex = 0;
+      rebuildLog(0);
+      const e = { kind: 'init', st: -1, i: -1, ch: '', level: 0, num: 0, cur: '',
+        numStack: [], strStack: [], temp: '', times: 0, pre: '' };
+      renderChips({ ...e, st: 0 });
+      q('stepInfo').innerHTML = `Step <b>0 / ${steps.length}</b>`;
+      q('chInfo').innerHTML = 'i: <b>-</b>';
+      renderFormula({ ...e, kind: 'init', st: -1, numStack: [], strStack: [], times: 0, pre: '', temp: '',
+        why: steps[0] ? steps[0].why : '' });
+      renderBranch(e);
+      renderDelta(e);
+      renderTape(e);
+      renderGroups(e);
+      renderCur(e);
+      renderStacks(e);
+      renderTmp(e);
+      renderPipe(e);
+      document.querySelectorAll('#codeBlock .cl[data-l]').forEach(d => d.classList.remove('on', 'dim'));
+      q('codeState').textContent = '等待开始…';
+      q('answerBox').style.display = 'none';
+      q('noteLine').textContent = `共 ${steps.length} 步 · 字符串长度 ${s.length} · 嵌套 ${groups.length} 层`;
+    }
+
+    function nextStep() {
+      if (stepIndex >= steps.length) return;
+      renderStep(stepIndex);
+      renderLog(steps[stepIndex]);
+      stepIndex++;
+      if (stepIndex >= steps.length) stopPlay();
+    }
+    function prevStep() {
+      if (stepIndex <= 0) return;
+      stepIndex--;
+      rebuildLog(stepIndex);
+      if (stepIndex === 0) { resetAll(); return; }
+      renderStep(stepIndex - 1);
+    }
+    function play() {
+      if (playing || stepIndex >= steps.length) return;
+      playing = true;
+      q('btnPlay').textContent = '暂停';
+      timer = setInterval(nextStep, 700);
+    }
+    function stopPlay() {
+      playing = false;
+      q('btnPlay').textContent = '自动播放';
+      if (timer) clearInterval(timer);
+      timer = null;
+    }
+
+    // 只算长度、不建串：用来挡掉解码后爆炸的输入
+    function decodedLen(str) {
+      const stk = []; let cur = 0, num = 0;
+      for (const ch of str) {
+        if (/\d/.test(ch)) num = num * 10 + (+ch);
+        else if (ch === '[') { stk.push([cur, num]); cur = 0; num = 0; }
+        else if (ch === ']') { const pr = stk.pop(); cur = pr[0] + cur * pr[1]; }
+        else cur++;
+      }
+      return cur;
+    }
+
+    function valid(str) {
+      if (!str) return '请输入内容';
+      if (str.length > MAX_LEN) return `最长 ${MAX_LEN} 个字符`;
+      if (!/^[A-Za-z0-9[\]]+$/.test(str)) return '只能包含字母、数字和方括号';
+      let d = 0;
+      for (const ch of str) {
+        if (ch === '[') d++;
+        else if (ch === ']') { d--; if (d < 0) return '括号不配对：] 多了'; }
+        if (d > 6) return '嵌套别超过 6 层';
+      }
+      if (d !== 0) return '括号不配对：[ 多了';
+      for (let i = 0; i < str.length; i++) {
+        if (str[i] === '[' && !/\d/.test(str[i - 1] || '')) return "每个 '[' 前面要有数字";
+      }
+      if (decodedLen(str) > 5000) return `解码后有 ${decodedLen(str)} 个字符，太多了（上限 5000）`;
+      return null;
+    }
+
+    function load(str) {
+      stopPlay();
+      s = str;
+      PRESETS.forEach((p, j) => q('btnP' + j).className = 'preset ' + (p === s ? 'active-mode' : 'ghost'));
+      q('caseLine').innerHTML = `示例：s = ${esc(s)} &rarr; ${esc(finalOf(s))} &nbsp;|&nbsp; 用 &larr; &rarr; 逐帧推进，空格自动播放`;
+      buildSteps(s);
+      resetAll();
+    }
+
+    // 独立于可视化步骤的一份朴素实现，用来核对最终结果
+    function finalOf(str) {
+      const ns = [], ss = []; let num = 0, cur = '';
+      for (const ch of str) {
+        if (/\d/.test(ch)) num = num * 10 + (+ch);
+        else if (ch === '[') { ns.unshift(num); ss.unshift(cur); num = 0; cur = ''; }
+        else if (ch === ']') { const k = ns.shift(), pre = ss.shift(); cur = pre + cur.repeat(k); }
+        else cur += ch;
+      }
+      return cur;
+    }
+
+    PRESETS.forEach((p, j) => q('btnP' + j).addEventListener('click', () => load(p)));
+    q('btnApply').addEventListener('click', () => {
+      const v = q('caseInput').value.trim();
+      const err = valid(v);
+      q('noteLine').innerHTML = err ? `<span class="warn-txt">${esc(err)}</span>` : '';
+      if (!err) load(v);
+    });
+    q('caseInput').addEventListener('keydown', ev => { if (ev.key === 'Enter') q('btnApply').click(); });
+    q('btnNext').addEventListener('click', nextStep);
+    q('btnPrev').addEventListener('click', prevStep);
+    q('btnPlay').addEventListener('click', () => { if (playing) stopPlay(); else play(); });
+    q('btnReset').addEventListener('click', () => { stopPlay(); resetAll(); });
+    document.addEventListener('keydown', ev => {
+      const t = ev.target.tagName;
+      if (t === 'INPUT' || t === 'TEXTAREA') return;
+      if (ev.key === 'ArrowLeft') { prevStep(); ev.preventDefault(); }
+      else if (ev.key === 'ArrowRight') { nextStep(); ev.preventDefault(); }
+      else if (ev.key === ' ') { if (playing) stopPlay(); else play(); ev.preventDefault(); }
+    });
+    window.addEventListener('resize', () => {
+      const e = steps[Math.max(0, stepIndex - 1)];
+      if (e && stepIndex > 0) renderGroups(e);
+    });
+
+    load(PRESETS[0]);
+  </script>
+</body>
+</html>
